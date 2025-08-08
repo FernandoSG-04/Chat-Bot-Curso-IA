@@ -302,3 +302,60 @@ body {
     background: #2481cc;
     color: white;
 } 
+
+/* Estilos para botones inline keyboard */
+.inline-keyboard {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 8px;
+}
+
+.keyboard-button {
+    flex: 1;
+    padding: 10px 12px;
+    background: #f0f8ff;
+    border: 2px solid #2481cc;
+    border-radius: 12px;
+    color: #2481cc;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    text-align: center;
+    outline: none;
+    user-select: none;
+}
+
+.keyboard-button:hover {
+    background: #2481cc;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(36, 129, 204, 0.3);
+}
+
+.keyboard-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(36, 129, 204, 0.3);
+}
+
+.keyboard-button:focus {
+    outline: 2px solid #2481cc;
+    outline-offset: 2px;
+}
+
+/* Responsive para botones */
+@media (max-width: 480px) {
+    .keyboard-row {
+        flex-direction: column;
+    }
+    
+    .keyboard-button {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+} 

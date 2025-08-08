@@ -13,10 +13,11 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
             scriptSrc: ["'self'"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.openai.com"]
+            connectSrc: ["'self'", "https://api.openai.com"],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:']
         }
     }
 }));
@@ -37,6 +38,11 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('src'));
+
+// Redirigir la raíz al inicio de sesión
+app.get('/', (req, res) => {
+    res.redirect('/login/login.html');
+});
 
 // Pool de conexiones a PostgreSQL
 let pool;

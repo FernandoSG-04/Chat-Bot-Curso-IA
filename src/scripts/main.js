@@ -38,14 +38,65 @@ const chatMessages = document.getElementById('chatMessages');
 const messageInput = document.getElementById('messageInput');
 const sendButton = document.getElementById('sendButton');
 
+// HTML helpers para avatares estilo Messenger
+function getBotAvatarHTML() {
+    return `
+        <div class="msg-avatar bot">
+            <div class="avatar-circle">🤖</div>
+        </div>
+    `;
+}
+
+function getUserAvatarHTML() {
+    // Si en el futuro hay foto del usuario, podríamos traerla de session/local
+    return `
+        <div class="msg-avatar user">
+            <div class="avatar-circle">🧑</div>
+        </div>
+    `;
+}
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
     initializeSecurity();
     initializeAudio();
     initializeDatabase();
-    initializeChat();
+    playChatOpenAnimation().then(() => {
+        initializeChat();
+    });
     setupEventListeners();
 });
+
+// Animación de apertura del contenedor de chat
+function playChatOpenAnimation() {
+    return new Promise((resolve) => {
+        try {
+            const container = document.querySelector('.telegram-container');
+            if (!container) return resolve();
+
+            // Respetar preferencias de accesibilidad
+            const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (prefersReducedMotion) return resolve();
+
+            // Animación simple y limpia: fade + scale del contenedor
+            container.classList.add('chat-open-start');
+            // forzar reflow
+            void container.offsetWidth;
+            container.classList.add('chat-open-animate');
+
+            const onEnd = () => {
+                container.removeEventListener('animationend', onEnd);
+                container.classList.remove('chat-open-start', 'chat-open-animate');
+                resolve();
+            };
+
+            container.addEventListener('animationend', onEnd);
+            setTimeout(onEnd, 1200);
+        } catch (_) {
+            resolve();
+        }
+    });
+}
 
 // Inicializar configuración de seguridad
 async function initializeSecurity() {
@@ -104,20 +155,26 @@ async function initializeDatabase() {
 
 // Inicializar el chat
 function initializeChat() {
-    // Mensaje de bienvenida inicial con audio
-    addBotMessage("¡Hola! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.", null, false, true);
-    
-    // Mostrar instrucciones divididas después del mensaje de bienvenida
-    setTimeout(() => {
-        showWelcomeInstructions();
-    }, 2000);
-    
-    // Pedir nombre después de mostrar todas las instrucciones
-    setTimeout(() => {
+    // Secuencia con escritura simulada
+    (async () => {
+        // Obtener nombre del usuario desde session/local storage
+        try {
+            const storedName = sessionStorage.getItem('loggedUser') || localStorage.getItem('rememberedUser');
+            if (storedName) {
+                chatState.userName = storedName;
+            }
+        } catch (_) {}
+
+        const greeting = chatState.userName
+            ? `¡Hola, ${chatState.userName}! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`
+            : `¡Hola! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`;
+
+        await sendBotMessage(greeting, null, false, true);
+        await showWelcomeInstructions();
         if (!chatState.userName) {
-            addBotMessage("Para comenzar, por favor proporciona tu nombre y apellido:", null, true, false);
+            await sendBotMessage("Para comenzar, por favor proporciona tu nombre y apellido:", null, true, false);
         }
-    }, 15000); // 15 segundos después para dar tiempo a las instrucciones
+    })();
 }
 
 // Reproducir audio de bienvenida
@@ -194,14 +251,46 @@ function setupEventListeners() {
     });
 }
 
+// Utilidades de mensajería con escritura simulada
+function sanitizeBotText(text) {
+    return String(text || '').replace(/\*\*/g, '');
+}
+
+function setHeaderTyping(isTyping) {
+    try {
+        const statusEl = document.querySelector('.chat-info p');
+        if (statusEl) statusEl.textContent = isTyping ? 'Escribiendo...' : 'En línea';
+    } catch (_) {}
+}
+
+function computeTypingDelay(text) {
+    const length = (text || '').length;
+    if (length <= 60) return 3000;         // Corto: 3s
+    if (length <= 220) return 4500;       // Mediano: 4.5s
+    return 7000;                           // Largo: 7s
+}
+
+async function sendBotMessage(text, keyboard = null, needsUserInput = false, playAudio = false) {
+    const clean = sanitizeBotText(text);
+    showTypingIndicator();
+    setHeaderTyping(true);
+    const delay = computeTypingDelay(clean);
+    await new Promise(r => setTimeout(r, delay));
+    hideTypingIndicator();
+    setHeaderTyping(false);
+    addBotMessage(clean, keyboard, needsUserInput, playAudio);
+}
+
 // Agregar mensaje del bot
 function addBotMessage(text, keyboard = null, needsUserInput = false, playAudio = false) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message bot-message';
 
+    const avatarHTML = getBotAvatarHTML();
     let messageContent = `
+        ${avatarHTML}
         <div class="message-bubble">
-            ${text}
+            ${String(text).replace(/\*\*/g, '')}
             ${keyboard ? keyboard : ''}
         </div>
     `;
@@ -238,7 +327,11 @@ function addBotMessage(text, keyboard = null, needsUserInput = false, playAudio 
 function addUserMessage(text) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message user-message';
-    messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+    const avatarHTML = getUserAvatarHTML();
+    messageDiv.innerHTML = `
+        <div class="message-bubble">${text}</div>
+        ${avatarHTML}
+    `;
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
     
@@ -294,39 +387,20 @@ function showMainMenu() {
         </div>
     `;
     
-    addBotMessage(`¡Perfecto, ${chatState.userName}! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:`, keyboard, false, false);
+    const name = chatState.userName ? `, ${chatState.userName}` : '';
+    addBotMessage(`¡Perfecto${name}! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:`, keyboard, false, false);
     chatState.currentState = 'main_menu';
 }
 
 // Mostrar instrucciones de bienvenida divididas
-function showWelcomeInstructions() {
-    // Mensaje 1: Instrucciones de escritura
-    addBotMessage("📝 **INSTRUCCIONES DE ESCRITURA**\n\nPuedes escribir cualquier pregunta en el campo de texto y presionar Enter o hacer clic en el botón enviar.", null, false, false);
-    
-    setTimeout(() => {
-        // Mensaje 2: Tipos de preguntas
-        addBotMessage("❓ **TIPOS DE PREGUNTAS**\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido", null, false, false);
-    }, 2000);
-    
-    setTimeout(() => {
-        // Mensaje 3: Comandos especiales
-        addBotMessage("⌨️ **COMANDOS ESPECIALES**\n\n• \"ayuda\" - Para ver estas instrucciones nuevamente\n• \"temas\" - Para ver los temas disponibles\n• \"ejercicios\" - Para solicitar ejercicios prácticos", null, false, false);
-    }, 4000);
-    
-    setTimeout(() => {
-        // Mensaje 4: Información sobre audio
-        addBotMessage("🎧 **INFORMACIÓN SOBRE AUDIO**\n\nEl chatbot reproduce audio automáticamente en el mensaje de bienvenida. Puedes activar o desactivar el audio usando la función toggleAudio().", null, false, false);
-    }, 6000);
-    
-    setTimeout(() => {
-        // Mensaje 5: Información sobre historial
-        addBotMessage("📊 **HISTORIAL DE CONVERSACIONES**\n\nTodas las conversaciones se guardan automáticamente para tu seguimiento.", null, false, false);
-    }, 8000);
-    
-    setTimeout(() => {
-        // Mensaje 6: Invitación final
-        addBotMessage("🚀 **¡LISTO PARA COMENZAR!**\n\n¿En qué puedo ayudarte hoy? ¡Estoy aquí para hacer tu aprendizaje más fácil y divertido!", getBackButton(), false, false);
-    }, 10000);
+async function showWelcomeInstructions() {
+    await sendBotMessage("📝 INSTRUCCIONES DE ESCRITURA\n\nPuedes escribir cualquier pregunta y presionar Enter o hacer clic en el botón enviar.");
+    await sendBotMessage("❓ TIPOS DE PREGUNTAS\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido");
+    await sendBotMessage("⌨️ COMANDOS ESPECIALES\n\n• 'ayuda' - Para ver estas instrucciones nuevamente\n• 'temas' - Para ver los temas disponibles\n• 'ejercicios' - Para solicitar ejercicios prácticos");
+    await sendBotMessage("🎧 INFORMACIÓN SOBRE AUDIO\n\nEl chatbot reproduce audio automáticamente en el mensaje de bienvenida. Puedes activar o desactivar el audio usando la función toggleAudio().");
+    await sendBotMessage("📊 HISTORIAL DE CONVERSACIONES\n\nTodas las conversaciones se guardan automáticamente para tu seguimiento.");
+    // Mostrar el menú principal al final de toda la información
+    showMainMenu();
 }
 
 // Mostrar temas
@@ -349,7 +423,7 @@ function showTopics() {
         </div>
     `;
     
-    addBotMessage("📚 **TEMAS DISPONIBLES**\n\nSelecciona el tema que te interesa:", keyboard, false, false);
+    sendBotMessage("📚 TEMAS DISPONIBLES\n\nSelecciona el tema que te interesa:", keyboard, false, false);
 }
 
 // Mostrar tema específico
@@ -374,7 +448,7 @@ function showTopic(topic) {
     };
     
     const selectedTopic = topics[topic];
-    addBotMessage(`**${selectedTopic.title}**\n\n${selectedTopic.content}`, getBackButton(), false, false);
+    sendBotMessage(`${selectedTopic.title}\n\n${selectedTopic.content}`, getBackButton(), false, false);
 }
 
 // Mostrar ejercicios
@@ -397,7 +471,7 @@ function showExercises() {
         </div>
     `;
     
-    addBotMessage("🧠 **EJERCICIOS DISPONIBLES**\n\nSelecciona el nivel de dificultad:", keyboard, false, false);
+    sendBotMessage("🧠 EJERCICIOS DISPONIBLES\n\nSelecciona el nivel de dificultad:", keyboard, false, false);
 }
 
 // Mostrar nivel de ejercicios
@@ -422,31 +496,31 @@ function showExerciseLevel(level) {
     };
     
     const selectedExercise = exercises[level];
-    addBotMessage(`**${selectedExercise.title}**\n\n${selectedExercise.content}`, getBackButton(), false, false);
+    sendBotMessage(`${selectedExercise.title}\n\n${selectedExercise.content}`, getBackButton(), false, false);
 }
 
 // Mostrar ayuda
 function showHelp() {
-    addBotMessage("❓ **AYUDA Y SOPORTE**\n\nAquí tienes las instrucciones de uso completas:", null, false, false);
+    sendBotMessage("❓ AYUDA Y SOPORTE\n\nAquí tienes las instrucciones de uso completas:", null, false, false);
     
     setTimeout(() => {
-        addBotMessage("📝 **ESCRIBIR MENSAJES**\n\nEscribe cualquier pregunta y presiona Enter o haz clic en enviar.", null, false, false);
+        sendBotMessage("📝 ESCRIBIR MENSAJES\n\nEscribe cualquier pregunta y presiona Enter o haz clic en enviar.", null, false, false);
     }, 1500);
     
     setTimeout(() => {
-        addBotMessage("🎯 **TIPOS DE PREGUNTAS**\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido", null, false, false);
+        sendBotMessage("🎯 TIPOS DE PREGUNTAS\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido", null, false, false);
     }, 3000);
     
     setTimeout(() => {
-        addBotMessage("⌨️ **COMANDOS ESPECIALES**\n\n• \"ayuda\" - Para ver estas instrucciones\n• \"temas\" - Para ver los temas disponibles\n• \"ejercicios\" - Para solicitar ejercicios prácticos", null, false, false);
+        sendBotMessage("⌨️ COMANDOS ESPECIALES\n\n• 'ayuda' - Para ver estas instrucciones\n• 'temas' - Para ver los temas disponibles\n• 'ejercicios' - Para solicitar ejercicios prácticos", null, false, false);
     }, 4500);
     
     setTimeout(() => {
-        addBotMessage("🎧 **AUDIO**\n\nEl chatbot reproduce audio automáticamente solo en el mensaje de bienvenida.", null, false, false);
+        sendBotMessage("🎧 AUDIO\n\nEl chatbot reproduce audio automáticamente solo en el mensaje de bienvenida.", null, false, false);
     }, 6000);
     
     setTimeout(() => {
-        addBotMessage("📊 **HISTORIAL**\n\nTodas las conversaciones se guardan automáticamente.", getBackButton(), false, false);
+        sendBotMessage("📊 HISTORIAL\n\nTodas las conversaciones se guardan automáticamente.", getBackButton(), false, false);
     }, 7500);
 }
 
@@ -586,7 +660,7 @@ function sendMessage() {
     setTimeout(async () => {
         hideTypingIndicator();
         await handleUserMessage(message);
-    }, 500);
+    }, 300);
 }
 
 // Procesar mensaje del usuario
@@ -595,18 +669,18 @@ async function handleUserMessage(message) {
         // Primer mensaje es el nombre del usuario
         if (message.split(' ').length >= 2) {
             chatState.userName = message;
-            addBotMessage(`¡Excelente, ${chatState.userName}! 👏\n\nTu identidad ha sido registrada correctamente.`, null, false, false);
+            await sendBotMessage(`¡Excelente, ${chatState.userName}! 👏\n\nTu identidad ha sido registrada correctamente.`, null, false, false);
             
             setTimeout(() => {
                 showMainMenu();
             }, 1500);
         } else {
-            addBotMessage("⚠️ Por favor proporciona tu nombre y apellido completos.", null, true, false);
+            await sendBotMessage("⚠️ Por favor proporciona tu nombre y apellido completos.", null, true, false);
         }
     } else {
         // Procesar otros mensajes con IA
         const response = await processUserMessageWithAI(message);
-        addBotMessage(response, null, false, false);
+        await sendBotMessage(response, null, false, false);
     }
 }
 
@@ -687,11 +761,12 @@ function showTypingIndicator() {
     typingDiv.id = 'typingIndicator';
     
     typingDiv.innerHTML = `
-        <div class="message-bubble">
-            <div class="loading">
-                <div></div>
-                <div></div>
-                <div></div>
+        <div class="typing-avatar">
+            <div class="avatar-circle"><span class="avatar-emoji">🤖</span></div>
+            <div class="typing-dots">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
             </div>
         </div>
     `;

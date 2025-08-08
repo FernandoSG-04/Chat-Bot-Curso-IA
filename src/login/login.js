@@ -151,9 +151,9 @@ async function handleSuccessfulLogin(username, remember) {
     // Animar éxito
     await animateSuccess();
 
-    // Redirigir al menú principal
+    // Redirigir al chat
     setTimeout(() => {
-        window.location.href = '../main-menu/main-menu.html';
+        window.location.href = '../chat.html';
     }, LOGIN_CONFIG.redirectDelay);
 }
 

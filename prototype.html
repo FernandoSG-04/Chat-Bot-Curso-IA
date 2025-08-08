@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Educativo - Telegram Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .telegram-container {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+            height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #2481cc;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .bot-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b35, #ff8e53);
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .chat-info h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .chat-info p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        .bot-message {
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .user-message {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .bot-message .message-bubble {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .user-message .message-bubble {
+            background: #2481cc;
+            color: white;
+        }
+
+        .inline-keyboard {
+            display: grid;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .keyboard-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .keyboard-button {
+            flex: 1;
+            padding: 10px 12px;
+            background: #f0f8ff;
+            border: 2px solid #2481cc;
+            border-radius: 12px;
+            color: #2481cc;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .keyboard-button:hover {
+            background: #2481cc;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .audio-player {
+            background: #e3f2fd;
+            padding: 12px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+
+        .play-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #2481cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .audio-info {
+            flex: 1;
+        }
+
+        .chat-input {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .send-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #2481cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading {
+            display: flex;
+            gap: 4px;
+            padding: 10px 0;
+        }
+
+        .loading div {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            animation: pulse 1.4s ease-in-out infinite both;
+        }
+
+        .loading div:nth-child(1) { animation-delay: -0.32s; }
+        .loading div:nth-child(2) { animation-delay: -0.16s; }
+
+        .copy-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .copy-button:hover {
+            background: #218838;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .session-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .glossary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .alphabet-button {
+            padding: 8px;
+            background: #f0f8ff;
+            border: 1px solid #2481cc;
+            border-radius: 8px;
+            color: #2481cc;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        .feedback-container {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .feedback-title {
+            font-weight: 600;
+            color: #155724;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #28a745;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="telegram-container">
+        <div class="chat-header">
+            <div class="bot-avatar">🤖</div>
+            <div class="chat-info">
+                <h3>Chatbot Educativo IA</h3>
+                <p>en línea</p>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <!-- Los mensajes se insertarán dinámicamente aquí -->
+        
+        </div>
+
+        <div class="chat-input">
+            <input type="text" class="input-field" id="messageInput" placeholder="Escribe un mensaje..." />
+            <button class="send-button" onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // Datos del curso
+        const courseData = {
+            sessions: [
+                { id: 1, title: "Introducción a la IA", questions: ["¿Qué es la inteligencia artificial?", "¿Cuáles son los tipos de IA?"], faq: "P: ¿Qué es machine learning?\nR: Es un subconjunto de la IA que permite a las máquinas aprender sin ser programadas explícitamente." },
+                { id: 2, title: "Machine Learning", questions: ["¿Qué es el aprendizaje supervisado?", "¿Diferencias entre clasificación y regresión?"], faq: "P: ¿Qué es un algoritmo?\nR: Es un conjunto de instrucciones para resolver un problema." },
+                { id: 3, title: "Deep Learning", questions: ["¿Qué son las redes neuronales?", "¿Cómo funcionan las CNN?"], faq: "P: ¿Qué es backpropagation?\nR: Es el algoritmo para entrenar redes neuronales." },
+                { id: 4, title: "NLP", questions: ["¿Qué es el procesamiento de lenguaje natural?", "¿Cómo funcionan los transformers?"], faq: "P: ¿Qué es un token?\nR: Es la unidad mínima de texto procesada." },
+                { id: 5, title: "Computer Vision", questions: ["¿Qué es la visión por computadora?", "¿Aplicaciones de CV?"], faq: "P: ¿Qué es un pixel?\nR: Es la unidad mínima de una imagen digital." }
+            ],
+            glossary: {
+                'A': [{ term: 'Algoritmo', definition: 'Conjunto de reglas o instrucciones para resolver un problema' }],
+                'B': [{ term: 'Big Data', definition: 'Conjuntos de datos muy grandes y complejos' }],
+                'C': [{ term: 'CNN', definition: 'Convolutional Neural Network - Red neuronal convolucional' }],
+                'D': [{ term: 'Deep Learning', definition: 'Aprendizaje profundo usando redes neuronales multicapa' }],
+                'M': [{ term: 'Machine Learning', definition: 'Aprendizaje automático de máquinas' }],
+                'N': [{ term: 'NLP', definition: 'Natural Language Processing - Procesamiento de lenguaje natural' }]
+            }
+        };
+
+        let currentState = 'start';
+        let currentSession = null;
+        let currentQuestionIndex = 0;
+        let userName = '';
+        let userAnswers = [];
+
+        // Inicializar el chat
+        function initChat() {
+            addBotMessage("¡Hola! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.");
+            
+            setTimeout(() => {
+                if (!userName) {
+                    addBotMessage("Para comenzar, por favor proporciona tu nombre y apellido:", null, true);
+                }
+            }, 1500);
+        }
+
+        // Agregar mensaje del bot
+        function addBotMessage(text, keyboard = null, needsUserInput = false) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message bot-message';
+
+            let messageContent = `
+                <div class="message-bubble">
+                    ${text}
+                    ${keyboard ? keyboard : ''}
+                </div>
+            `;
+
+            messageDiv.innerHTML = messageContent;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            if (!needsUserInput && !keyboard) {
+                setTimeout(() => {
+                    if (currentState === 'start' && !userName) {
+                        // No hacer nada, esperar input del usuario
+                    } else if (currentState === 'start') {
+                        showMainMenu();
+                    }
+                }, 1000);
+            }
+        }
+
+        // Agregar mensaje del usuario
+        function addUserMessage(text) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Mostrar indicador de escritura
+        function showTyping() {
+            const messagesContainer = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message';
+            typingDiv.id = 'typing';
+            typingDiv.innerHTML = `
+                <div class="message-bubble">
+                    <div class="loading">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Remover indicador de escritura
+        function removeTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        // Mostrar menú principal
+        function showMainMenu() {
+            const keyboard = `
+                <div class="inline-keyboard">
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showWelcome()">🎵 Bienvenida e Instrucciones</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showSessions()">📚 Sesiones del Curso</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showGlossary()">📖 Glosario</button>
+                    </div>
+                </div>
+            `;
+            
+            addBotMessage(`¡Perfecto, ${userName}! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:`, keyboard);
+            currentState = 'main_menu';
+        }
+
+        // Mostrar bienvenida con audio
+        function showWelcome() {
+            const audioPlayer = `
+                <div class="audio-player">
+                    <button class="play-button" onclick="playAudio()">▶️</button>
+                    <div class="audio-info">
+                        <strong>Bienvenida al Curso</strong>
+                        <div style="font-size: 12px; color: #666;">Duración: 2:45</div>
+                    </div>
+                </div>
+            `;
+
+            addBotMessage(`🎵 <strong>Audio de Bienvenida</strong>\n\nEscucha las instrucciones generales del curso:\n\n${audioPlayer}`, getBackButton());
+        }
+
+        // Simular reproducción de audio
+        function playAudio() {
+            const playButton = event.target;
+            playButton.innerHTML = '⏸️';
+            addBotMessage("🔊 Reproduciendo audio de bienvenida...\n\n📋 <strong>Instrucciones:</strong>\n• Usa los botones para navegar\n• Responde las preguntas con texto\n• Revisa el glosario cuando necesites\n• El bot te dará retroalimentación automática");
+            
+            setTimeout(() => {
+                playButton.innerHTML = '▶️';
+                addBotMessage("✅ Audio completado. ¿Listo para comenzar con el curso?", getBackButton());
+            }, 3000);
+        }
+
+        // Mostrar sesiones
+        function showSessions() {
+            let keyboard = '<div class="inline-keyboard session-grid">';
+            
+            for (let i = 1; i <= 10; i++) {
+                const session = courseData.sessions.find(s => s.id === i);
+                const title = session ? session.title : `Sesión ${i}`;
+                keyboard += `<button class="keyboard-button" onclick="showSession(${i})">📖 ${title}</button>`;
+            }
+            
+            keyboard += '</div>';
+            keyboard += getBackButton();
+
+            addBotMessage("📚 <strong>Sesiones del Curso</strong>\n\nSelecciona la sesión que deseas revisar:", keyboard);
+            currentState = 'sessions';
+        }
+
+        // Mostrar sesión específica
+        function showSession(sessionId) {
+            currentSession = sessionId;
+            const session = courseData.sessions.find(s => s.id === sessionId);
+            const title = session ? session.title : `Sesión ${sessionId}`;
+
+            const keyboard = `
+                <div class="inline-keyboard">
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="startQuestions(${sessionId})">❓ Preguntas</button>
+                        <button class="keyboard-button" onclick="showFAQ(${sessionId})">❔ FAQ</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showActivities(${sessionId})">🛠️ Actividades</button>
+                    </div>
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showSessions()">⬅️ Volver a Sesiones</button>
+                        <button class="keyboard-button" onclick="showMainMenu()">🏠 Menú Principal</button>
+                    </div>
+                </div>
+            `;
+
+            addBotMessage(`📖 <strong>${title}</strong>\n\n¿Qué deseas hacer en esta sesión?`, keyboard);
+        }
+
+        // Iniciar preguntas de sesión
+        function startQuestions(sessionId) {
+            const session = courseData.sessions.find(s => s.id === sessionId);
+            if (session && session.questions.length > 0) {
+                currentQuestionIndex = 0;
+                currentState = 'answering';
+                askNextQuestion();
+            } else {
+                addBotMessage("❌ No hay preguntas disponibles para esta sesión.", getBackButton());
+            }
+        }
+
+        // Hacer siguiente pregunta
+        function askNextQuestion() {
+            const session = courseData.sessions.find(s => s.id === currentSession);
+            if (currentQuestionIndex < session.questions.length) {
+                const question = session.questions[currentQuestionIndex];
+                const keyboard = `
+                    <div class="inline-keyboard">
+                        <div class="keyboard-row">
+                            <button class="keyboard-button" onclick="skipQuestion()">⏭️ Saltar</button>
+                            <button class="keyboard-button" onclick="cancelQuestions()">❌ Cancelar</button>
+                        </div>
+                    </div>
+                `;
+                
+                addBotMessage(`❓ <strong>Pregunta ${currentQuestionIndex + 1}:</strong>\n\n${question}\n\nPor favor, escribe tu respuesta:`, keyboard, true);
+            } else {
+                completeQuestions();
+            }
+        }
+
+        // Saltar pregunta
+        function skipQuestion() {
+            userAnswers.push({ question: currentQuestionIndex, answer: null, skipped: true });
+            currentQuestionIndex++;
+            addUserMessage("⏭️ Pregunta saltada");
+            
+            setTimeout(() => {
+                askNextQuestion();
+            }, 500);
+        }
+
+        // Cancelar preguntas
+        function cancelQuestions() {
+            currentState = 'main_menu';
+            addUserMessage("❌ Cuestionario cancelado");
+            showSession(currentSession);
+        }
+
+        // Completar preguntas
+        function completeQuestions() {
+            addBotMessage(`✅ <strong>¡Cuestionario completado!</strong>\n\nHas respondido ${userAnswers.filter(a => !a.skipped).length} de ${courseData.sessions.find(s => s.id === currentSession).questions.length} preguntas.\n\nTus respuestas han sido registradas para retroalimentación.`, getBackToSessionButton());
+            currentState = 'main_menu';
+        }
+
+        // Mostrar FAQ
+        function showFAQ(sessionId) {
+            const session = courseData.sessions.find(s => s.id === sessionId);
+            const faq = session ? session.faq : "No hay FAQ disponible para esta sesión.";
+
+            addBotMessage(`❔ <strong>FAQ - ${session ? session.title : `Sesión ${sessionId}`}</strong>\n\n${faq}`, getBackToSessionButton());
+        }
+
+        // Mostrar actividades
+        function showActivities(sessionId) {
+            const videoLink = "https://youtube.com/watch?v=example";
+            const workbookLink = "https://colab.research.google.com/example";
+            
+            const activityContent = `
+                🛠️ <strong>Actividad Práctica</strong>
+
+                📋 <strong>Descripción:</strong>
+                Implementa un modelo básico de machine learning para clasificar datos.
+
+                🎥 <strong>Video Tutorial:</strong>
+                <a href="${videoLink}" target="_blank">${videoLink}</a>
+
+                📝 <strong>Pasos:</strong>
+                1. Descarga el dataset
+                2. Preprocesa los datos
+                3. Entrena el modelo
+                4. Evalúa los resultados
+
+                📓 <strong>Workbook:</strong>
+                <a href="${workbookLink}" target="_blank">Abrir en Google Colab</a>
+
+                <div class="copy-button" onclick="copyPrompt()">📋 Copiar Prompt de Ejemplo</div>
+            `;
+
+            const keyboard = `
+                <div class="inline-keyboard">
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="submitActivity()">📤 Enviar Respuesta</button>
+                    </div>
+                    ${getBackToSessionButton()}
+                </div>
+            `;
+
+            addBotMessage(activityContent, keyboard);
+        }
+
+        // Copiar prompt de ejemplo
+        function copyPrompt() {
+            const examplePrompt = "Actúa como un experto en machine learning y explica paso a paso cómo implementar un algoritmo de clasificación usando Python y scikit-learn.";
+            
+            navigator.clipboard.writeText(examplePrompt).then(() => {
+                addBotMessage("✅ Prompt copiado al portapapeles!");
+            }).catch(() => {
+                addBotMessage(`📋 <strong>Prompt de ejemplo:</strong>\n\n<code>${examplePrompt}</code>\n\nPuedes copiarlo manualmente.`);
+            });
+        }
+
+        // Enviar actividad
+        function submitActivity() {
+            addBotMessage("📤 <strong>Envía tu respuesta de la actividad:</strong>\n\nPuedes escribir tu solución, pegar código, o describir tu implementación.", null, true);
+            currentState = 'submitting_activity';
+        }
+
+        // Generar feedback con IA (simulado)
+        function generateFeedback(userResponse) {
+            showTyping();
+            
+            setTimeout(() => {
+                removeTyping();
+                
+                const feedbackContent = `
+                    <div class="feedback-container">
+                        <div class="feedback-title">🤖 Retroalimentación Automática</div>
+                        <p><strong>✅ Aspectos positivos:</strong> Has demostrado comprensión de los conceptos básicos y tu implementación sigue una estructura lógica.</p>
+                        <p><strong>💡 Áreas de mejora:</strong> Considera agregar validación de datos y métricas de evaluación más detalladas.</p>
+                        <p><strong>🎯 Siguiente paso:</strong> Practica con diferentes algoritmos de clasificación para comparar resultados.</p>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 75%"></div>
+                        </div>
+                        <small>Progreso: 75% completado</small>
+                    </div>
+                `;
+                
+                addBotMessage(`🎉 <strong>¡Respuesta recibida y procesada!</strong>\n\n${feedbackContent}`, getBackToSessionButton());
+                currentState = 'main_menu';
+            }, 3000);
+        }
+
+        // Mostrar glosario
+        function showGlossary() {
+            let keyboard = '<div class="inline-keyboard glossary-grid">';
+            const availableLetters = Object.keys(courseData.glossary);
+            
+            for (let letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') {
+                const hasTerms = availableLetters.includes(letter);
+                if (hasTerms) {
+                    keyboard += `<button class="alphabet-button" onclick="showGlossaryLetter('${letter}')">${letter}</button>`;
+                } else {
+                    keyboard += `<button class="alphabet-button" style="opacity: 0.3; cursor: not-allowed;">${letter}</button>`;
+                }
+            }
+            
+            keyboard += '</div>';
+            keyboard += getBackButton();
+
+            addBotMessage("📖 <strong>Glosario de Términos de IA</strong>\n\nSelecciona una letra para ver los términos disponibles:", keyboard);
+        }
+
+        // Mostrar términos de una letra específica
+        function showGlossaryLetter(letter) {
+            const terms = courseData.glossary[letter] || [];
+            
+            if (terms.length === 0) {
+                addBotMessage(`❌ No hay términos disponibles para la letra ${letter}.`, getBackButton());
+                return;
+            }
+
+            let content = `📖 <strong>Términos - Letra ${letter}</strong>\n\n`;
+            
+            terms.forEach(term => {
+                content += `<strong>${term.term}:</strong> ${term.definition}\n\n`;
+            });
+
+            const keyboard = `
+                <div class="inline-keyboard">
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showGlossary()">⬅️ Volver al Glosario</button>
+                        <button class="keyboard-button" onclick="showMainMenu()">🏠 Menú Principal</button>
+                    </div>
+                </div>
+            `;
+
+            addBotMessage(content, keyboard);
+        }
+
+        // Funciones de utilidad para botones
+        function getBackButton() {
+            return `
+                <div class="inline-keyboard">
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showMainMenu()">⬅️ Menú Principal</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getBackToSessionButton() {
+            return `
+                <div class="inline-keyboard">
+                    <div class="keyboard-row">
+                        <button class="keyboard-button" onclick="showSession(${currentSession})">⬅️ Volver a Sesión</button>
+                        <button class="keyboard-button" onclick="showMainMenu()">🏠 Menú Principal</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Manejar envío de mensajes
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            addUserMessage(message);
+            input.value = '';
+            
+            setTimeout(() => {
+                handleUserMessage(message);
+            }, 500);
+        }
+
+        // Procesar mensaje del usuario
+        function handleUserMessage(message) {
+            if (!userName && currentState === 'start') {
+                // Primer mensaje es el nombre del usuario
+                if (message.split(' ').length >= 2) {
+                    userName = message;
+                    addBotMessage(`¡Excelente, ${userName}! 👏\n\nTu identidad ha sido registrada correctamente.`);
+                    
+                    setTimeout(() => {
+                        showMainMenu();
+                    }, 1500);
+                } else {
+                    addBotMessage("⚠️ Por favor proporciona tu nombre y apellido completos.", null, true);
+                }
+            } else if (currentState === 'answering') {
+                // Usuario está respondiendo preguntas
+                userAnswers.push({
+                    question: currentQuestionIndex,
+                    answer: message,
+                    timestamp: new Date()
+                });
+                
+                addBotMessage("✅ Respuesta recibida y guardada.");
+                currentQuestionIndex++;
+                
+                setTimeout(() => {
+                    askNextQuestion();
+                }, 1000);
+            } else if (currentState === 'submitting_activity') {
+                // Usuario está enviando respuesta de actividad
+                addBotMessage("📨 Procesando tu respuesta y generando retroalimentación...");
+                generateFeedback(message);
+            } else if (message.toLowerCase() === '/cancel') {
+                // Cancelar operación actual
+                currentState = 'main_menu';
+                addBotMessage("❌ Operación cancelada.", null);
+                showMainMenu();
+            } else {
+                // Mensaje fuera de contexto
+                addBotMessage("🤔 No entiendo ese comando. Usa los botones para navegar o escribe /cancel para volver al menú principal.", getBackButton());
+            }
+        }
+
+        // Manejar Enter en el input
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Inicializar el chat al cargar la página
+        window.onload = function() {
+            setTimeout(initChat, 1000);
+        };
+    </script>
+</body>
+</html>

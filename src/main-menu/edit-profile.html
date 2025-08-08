@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Perfil - Curso IA</title>
+    <link rel="stylesheet" href="main-menu.css">
+    <link rel="stylesheet" href="edit-profile.css">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="particles-container"></div>
+    
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <div class="logo-icon">
+                    <img src="../assets/images/brain-icon.jpg" alt="Logo" class="brain-image">
+                </div>
+                <span class="logo-text">APRENDE Y APLICA IA®</span>
+            </div>
+            <div class="nav-back">
+                <a href="main-menu.html" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Volver al Menú</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main class="main-content">
+        <div class="edit-profile-container">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-user-edit"></i>
+                    Editar Perfil
+                </h1>
+                <p class="page-subtitle">Actualiza tu información personal y preferencias</p>
+            </div>
+
+            <div class="profile-form-container">
+                <form class="profile-form" id="editProfileForm">
+                    <!-- Información Personal -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-user"></i>
+                            Información Personal
+                        </h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">Nombre</label>
+                                <input type="text" id="firstName" name="firstName" value="Usuario" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Apellido</label>
+                                <input type="text" id="lastName" name="lastName" value="Estudiante" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Correo Electrónico</label>
+                            <input type="email" id="email" name="email" value="usuario@email.com" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Teléfono</label>
+                            <input type="tel" id="phone" name="phone" value="+34 123 456 789">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="birthDate">Fecha de Nacimiento</label>
+                            <input type="date" id="birthDate" name="birthDate">
+                        </div>
+                    </div>
+
+                    <!-- Información Académica -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-graduation-cap"></i>
+                            Información Académica
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label for="education">Nivel de Educación</label>
+                            <select id="education" name="education">
+                                <option value="">Selecciona tu nivel</option>
+                                <option value="secundaria">Secundaria</option>
+                                <option value="bachillerato">Bachillerato</option>
+                                <option value="universidad" selected>Universidad</option>
+                                <option value="postgrado">Postgrado</option>
+                                <option value="doctorado">Doctorado</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="field">Campo de Estudio</label>
+                            <input type="text" id="field" name="field" value="Inteligencia Artificial">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="experience">Experiencia en IA</label>
+                            <select id="experience" name="experience">
+                                <option value="principiante" selected>Principiante</option>
+                                <option value="intermedio">Intermedio</option>
+                                <option value="avanzado">Avanzado</option>
+                                <option value="experto">Experto</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Preferencias -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-cog"></i>
+                            Preferencias
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label for="language">Idioma Preferido</label>
+                            <select id="language" name="language">
+                                <option value="es" selected>Español</option>
+                                <option value="en">English</option>
+                                <option value="fr">Français</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="timezone">Zona Horaria</label>
+                            <select id="timezone" name="timezone">
+                                <option value="UTC+1" selected>UTC+1 (España)</option>
+                                <option value="UTC-5">UTC-5 (Estados Unidos Este)</option>
+                                <option value="UTC-6">UTC-6 (Estados Unidos Central)</option>
+                                <option value="UTC-8">UTC-8 (Estados Unidos Pacífico)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="notifications" name="notifications" checked>
+                                <span class="checkmark"></span>
+                                Recibir notificaciones por email
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="newsletter" name="newsletter" checked>
+                                <span class="checkmark"></span>
+                                Suscribirse al boletín de noticias
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Botones de acción -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='main-menu.html'">
+                            <i class="fas fa-times"></i>
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="edit-profile.js"></script>
+</body>
+</html>

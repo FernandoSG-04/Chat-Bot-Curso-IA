@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Curso IA</title>
+    <link rel="stylesheet" href="main-menu.css">
+    <link rel="stylesheet" href="settings.css">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="particles-container"></div>
+    
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <div class="logo-icon">
+                    <img src="../assets/images/brain-icon.jpg" alt="Logo" class="brain-image">
+                </div>
+                <span class="logo-text">APRENDE Y APLICA IA®</span>
+            </div>
+            <div class="nav-back">
+                <a href="main-menu.html" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Volver al Menú</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main class="main-content">
+        <div class="settings-container">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-cog"></i>
+                    Configuración
+                </h1>
+                <p class="page-subtitle">Personaliza tu experiencia de aprendizaje</p>
+            </div>
+
+            <div class="settings-grid">
+                <!-- Configuración de Notificaciones -->
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-bell"></i>
+                        Notificaciones
+                    </h3>
+                    <div class="settings-options">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Notificaciones por Email</h4>
+                                <p>Recibe actualizaciones sobre nuevos cursos y contenido</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="emailNotifications" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Notificaciones Push</h4>
+                                <p>Recibe notificaciones en tiempo real</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="pushNotifications">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Recordatorios de Estudio</h4>
+                                <p>Recibe recordatorios para continuar tu aprendizaje</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="studyReminders" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Privacidad -->
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-shield-alt"></i>
+                        Privacidad y Seguridad
+                    </h3>
+                    <div class="settings-options">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Perfil Público</h4>
+                                <p>Permite que otros usuarios vean tu perfil</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="publicProfile">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Autenticación de Dos Factores</h4>
+                                <p>Añade una capa extra de seguridad a tu cuenta</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="twoFactorAuth">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Historial de Actividad</h4>
+                                <p>Guarda tu historial de cursos y progreso</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="activityHistory" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Aplicación -->
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-mobile-alt"></i>
+                        Aplicación
+                    </h3>
+                    <div class="settings-options">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Modo Oscuro</h4>
+                                <p>Usa el tema oscuro para mejor experiencia</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="darkMode" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Reproducción Automática</h4>
+                                <p>Reproduce automáticamente el siguiente video</p>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="autoPlay">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Calidad de Video</h4>
+                                <p>Selecciona la calidad preferida de video</p>
+                            </div>
+                            <select id="videoQuality" class="setting-select">
+                                <option value="auto">Automática</option>
+                                <option value="720p">720p</option>
+                                <option value="1080p" selected>1080p</option>
+                                <option value="4k">4K</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Idioma -->
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-globe"></i>
+                        Idioma y Región
+                    </h3>
+                    <div class="settings-options">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Idioma de la Interfaz</h4>
+                                <p>Selecciona el idioma preferido</p>
+                            </div>
+                            <select id="interfaceLanguage" class="setting-select">
+                                <option value="es" selected>Español</option>
+                                <option value="en">English</option>
+                                <option value="fr">Français</option>
+                                <option value="de">Deutsch</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Zona Horaria</h4>
+                                <p>Configura tu zona horaria local</p>
+                            </div>
+                            <select id="timezone" class="setting-select">
+                                <option value="UTC+1" selected>UTC+1 (España)</option>
+                                <option value="UTC-5">UTC-5 (Estados Unidos Este)</option>
+                                <option value="UTC-6">UTC-6 (Estados Unidos Central)</option>
+                                <option value="UTC-8">UTC-8 (Estados Unidos Pacífico)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acciones de Cuenta -->
+                <div class="settings-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-user-cog"></i>
+                        Cuenta
+                    </h3>
+                    <div class="settings-options">
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Cambiar Contraseña</h4>
+                                <p>Actualiza tu contraseña de acceso</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="changePassword()">
+                                <i class="fas fa-key"></i>
+                                Cambiar
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Exportar Datos</h4>
+                                <p>Descarga todos tus datos y progreso</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="exportData()">
+                                <i class="fas fa-download"></i>
+                                Exportar
+                            </button>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <div class="setting-info">
+                                <h4>Eliminar Cuenta</h4>
+                                <p>Elimina permanentemente tu cuenta</p>
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteAccount()">
+                                <i class="fas fa-trash"></i>
+                                Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="settings-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='main-menu.html'">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                    <i class="fas fa-save"></i>
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="settings.js"></script>
+</body>
+</html>

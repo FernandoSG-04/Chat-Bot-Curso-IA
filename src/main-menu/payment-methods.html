@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Métodos de Pago - Curso IA</title>
+    <link rel="stylesheet" href="main-menu.css">
+    <link rel="stylesheet" href="payment-methods.css">
+    <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="particles-container"></div>
+    
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <div class="logo-icon">
+                    <img src="../assets/images/brain-icon.jpg" alt="Logo" class="brain-image">
+                </div>
+                <span class="logo-text">APRENDE Y APLICA IA®</span>
+            </div>
+            <div class="nav-back">
+                <a href="main-menu.html" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Volver al Menú</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Contenido principal -->
+    <main class="main-content">
+        <div class="payment-container">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-credit-card"></i>
+                    Métodos de Pago
+                </h1>
+                <p class="page-subtitle">Gestiona tus métodos de pago y suscripciones</p>
+            </div>
+
+            <div class="payment-grid">
+                <!-- Métodos de Pago Guardados -->
+                <div class="payment-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-wallet"></i>
+                        Métodos Guardados
+                    </h3>
+                    <div class="payment-methods">
+                        <div class="payment-method">
+                            <div class="method-info">
+                                <div class="method-icon">
+                                    <i class="fab fa-cc-visa"></i>
+                                </div>
+                                <div class="method-details">
+                                    <h4>Visa ****1234</h4>
+                                    <p>Expira: 12/25</p>
+                                </div>
+                            </div>
+                            <div class="method-actions">
+                                <button class="btn btn-secondary" onclick="editPaymentMethod(1)">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button class="btn btn-danger" onclick="deletePaymentMethod(1)">
+                                    <i class="fas fa-trash"></i>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="payment-method">
+                            <div class="method-info">
+                                <div class="method-icon">
+                                    <i class="fab fa-cc-mastercard"></i>
+                                </div>
+                                <div class="method-details">
+                                    <h4>Mastercard ****5678</h4>
+                                    <p>Expira: 08/26</p>
+                                </div>
+                            </div>
+                            <div class="method-actions">
+                                <button class="btn btn-secondary" onclick="editPaymentMethod(2)">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button class="btn btn-danger" onclick="deletePaymentMethod(2)">
+                                    <i class="fas fa-trash"></i>
+                                    Eliminar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agregar Nuevo Método -->
+                <div class="payment-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-plus-circle"></i>
+                        Agregar Nuevo Método
+                    </h3>
+                    <div class="add-payment-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cardNumber">Número de Tarjeta</label>
+                                <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+                            </div>
+                            <div class="form-group">
+                                <label for="cardHolder">Titular de la Tarjeta</label>
+                                <input type="text" id="cardHolder" placeholder="Nombre Apellido">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="expiryDate">Fecha de Expiración</label>
+                                <input type="text" id="expiryDate" placeholder="MM/YY" maxlength="5">
+                            </div>
+                            <div class="form-group">
+                                <label for="cvv">CVV</label>
+                                <input type="text" id="cvv" placeholder="123" maxlength="4">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="saveCard" checked>
+                                <span class="checkmark"></span>
+                                Guardar esta tarjeta para futuras compras
+                            </label>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="addPaymentMethod()">
+                            <i class="fas fa-plus"></i>
+                            Agregar Método de Pago
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Suscripciones Activas -->
+                <div class="payment-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-crown"></i>
+                        Suscripciones Activas
+                    </h3>
+                    <div class="subscriptions">
+                        <div class="subscription-item">
+                            <div class="subscription-info">
+                                <div class="subscription-icon">
+                                    <i class="fas fa-crown"></i>
+                                </div>
+                                <div class="subscription-details">
+                                    <h4>Plan Premium</h4>
+                                    <p>Acceso completo a todos los cursos</p>
+                                    <span class="subscription-price">€29.99/mes</span>
+                                </div>
+                            </div>
+                            <div class="subscription-status">
+                                <span class="status-badge active">Activa</span>
+                                <p class="renewal-date">Renueva: 15/01/2025</p>
+                            </div>
+                        </div>
+                        
+                        <div class="subscription-item">
+                            <div class="subscription-info">
+                                <div class="subscription-icon">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
+                                <div class="subscription-details">
+                                    <h4>Plan Estudiantil</h4>
+                                    <p>Acceso básico a cursos seleccionados</p>
+                                    <span class="subscription-price">€9.99/mes</span>
+                                </div>
+                            </div>
+                            <div class="subscription-status">
+                                <span class="status-badge active">Activa</span>
+                                <p class="renewal-date">Renueva: 20/01/2025</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Historial de Transacciones -->
+                <div class="payment-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-history"></i>
+                        Historial de Transacciones
+                    </h3>
+                    <div class="transactions">
+                        <div class="transaction-item">
+                            <div class="transaction-info">
+                                <div class="transaction-icon">
+                                    <i class="fas fa-credit-card"></i>
+                                </div>
+                                <div class="transaction-details">
+                                    <h4>Plan Premium - Renovación</h4>
+                                    <p>15/12/2024 - 14:30</p>
+                                </div>
+                            </div>
+                            <div class="transaction-amount">
+                                <span class="amount">-€29.99</span>
+                                <span class="status success">Completada</span>
+                            </div>
+                        </div>
+                        
+                        <div class="transaction-item">
+                            <div class="transaction-info">
+                                <div class="transaction-icon">
+                                    <i class="fas fa-download"></i>
+                                </div>
+                                <div class="transaction-details">
+                                    <h4>Curso Avanzado IA</h4>
+                                    <p>10/12/2024 - 09:15</p>
+                                </div>
+                            </div>
+                            <div class="transaction-amount">
+                                <span class="amount">-€49.99</span>
+                                <span class="status success">Completada</span>
+                            </div>
+                        </div>
+                        
+                        <div class="transaction-item">
+                            <div class="transaction-info">
+                                <div class="transaction-icon">
+                                    <i class="fas fa-undo"></i>
+                                </div>
+                                <div class="transaction-details">
+                                    <h4>Reembolso - Curso Básico</h4>
+                                    <p>05/12/2024 - 16:45</p>
+                                </div>
+                            </div>
+                            <div class="transaction-amount">
+                                <span class="amount">+€19.99</span>
+                                <span class="status refund">Reembolsado</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="payment-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.location.href='main-menu.html'">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="savePaymentSettings()">
+                    <i class="fas fa-save"></i>
+                    Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="payment-methods.js"></script>
+</body>
+</html>

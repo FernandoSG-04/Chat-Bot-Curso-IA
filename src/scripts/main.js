@@ -7,6 +7,17 @@ const CHATBOT_CONFIG = {
     welcomeAudio: {
         src: 'assets/audio/welcome.mp3',
         volume: 0.7
+    },
+    // Configuración de OpenAI (se cargará desde variables de entorno)
+    openai: {
+        apiKey: null, // Se cargará dinámicamente
+        model: 'gpt-4',
+        maxTokens: 1000,
+        temperature: 0.7
+    },
+    // Configuración de base de datos (se cargará desde variables de entorno)
+    database: {
+        url: null // Se cargará dinámicamente
     }
 };
 
@@ -18,7 +29,8 @@ let chatState = {
     audioContext: null,
     audioEnabled: true,
     userName: '',
-    currentState: 'start'
+    currentState: 'start',
+    dbConnection: null
 };
 
 // Elementos del DOM
@@ -28,10 +40,41 @@ const sendButton = document.getElementById('sendButton');
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
+    initializeSecurity();
     initializeAudio();
+    initializeDatabase();
     initializeChat();
     setupEventListeners();
 });
+
+// Inicializar configuración de seguridad
+async function initializeSecurity() {
+    try {
+        // Cargar configuración desde el servidor de forma segura
+        const configResponse = await fetch('/api/config', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': getApiKey(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (configResponse.ok) {
+            const config = await configResponse.json();
+            CHATBOT_CONFIG.openai.model = config.openaiModel || 'gpt-4';
+            CHATBOT_CONFIG.openai.maxTokens = config.maxTokens || 1000;
+            CHATBOT_CONFIG.openai.temperature = config.temperature || 0.7;
+            CHATBOT_CONFIG.audioEnabled = config.audioEnabled !== false;
+            console.log('Configuración cargada de forma segura');
+        } else {
+            console.warn('No se pudo cargar la configuración del servidor');
+        }
+    } catch (error) {
+        console.warn('Error cargando configuración:', error);
+    }
+}
 
 // Inicializar sistema de audio
 function initializeAudio() {
@@ -43,6 +86,19 @@ function initializeAudio() {
     } catch (error) {
         console.warn('Audio no soportado:', error);
         chatState.audioEnabled = false;
+    }
+}
+
+// Inicializar conexión a base de datos
+async function initializeDatabase() {
+    try {
+        if (!CHATBOT_CONFIG.database.url) {
+            console.warn('URL de base de datos no configurada');
+            return;
+        }
+        console.log('Configuración de base de datos cargada');
+    } catch (error) {
+        console.warn('Error inicializando base de datos:', error);
     }
 }
 
@@ -244,38 +300,33 @@ function showMainMenu() {
 
 // Mostrar instrucciones de bienvenida divididas
 function showWelcomeInstructions() {
-    // Mensaje 1: Saludo
-    addBotMessage("🎵 **AUDIO DE BIENVENIDA**\n\n¡Hola! Soy tu asistente educativo. Te doy la bienvenida al curso de inteligencia artificial.", null, false, false);
+    // Mensaje 1: Instrucciones de escritura
+    addBotMessage("📝 **INSTRUCCIONES DE ESCRITURA**\n\nPuedes escribir cualquier pregunta en el campo de texto y presionar Enter o hacer clic en el botón enviar.", null, false, false);
     
     setTimeout(() => {
-        // Mensaje 2: Instrucciones de escritura
-        addBotMessage("📝 **INSTRUCCIONES DE ESCRITURA**\n\nPuedes escribir cualquier pregunta en el campo de texto y presionar Enter o hacer clic en el botón enviar.", null, false, false);
+        // Mensaje 2: Tipos de preguntas
+        addBotMessage("❓ **TIPOS DE PREGUNTAS**\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido", null, false, false);
     }, 2000);
     
     setTimeout(() => {
-        // Mensaje 3: Tipos de preguntas
-        addBotMessage("❓ **TIPOS DE PREGUNTAS**\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido", null, false, false);
+        // Mensaje 3: Comandos especiales
+        addBotMessage("⌨️ **COMANDOS ESPECIALES**\n\n• \"ayuda\" - Para ver estas instrucciones nuevamente\n• \"temas\" - Para ver los temas disponibles\n• \"ejercicios\" - Para solicitar ejercicios prácticos", null, false, false);
     }, 4000);
     
     setTimeout(() => {
-        // Mensaje 4: Comandos especiales
-        addBotMessage("⌨️ **COMANDOS ESPECIALES**\n\n• \"ayuda\" - Para ver estas instrucciones nuevamente\n• \"temas\" - Para ver los temas disponibles\n• \"ejercicios\" - Para solicitar ejercicios prácticos", null, false, false);
+        // Mensaje 4: Información sobre audio
+        addBotMessage("🎧 **INFORMACIÓN SOBRE AUDIO**\n\nEl chatbot reproduce audio automáticamente en el mensaje de bienvenida. Puedes activar o desactivar el audio usando la función toggleAudio().", null, false, false);
     }, 6000);
     
     setTimeout(() => {
-        // Mensaje 5: Información sobre audio
-        addBotMessage("🎧 **INFORMACIÓN SOBRE AUDIO**\n\nEl chatbot reproduce audio automáticamente en el mensaje de bienvenida. Puedes activar o desactivar el audio usando la función toggleAudio().", null, false, false);
+        // Mensaje 5: Información sobre historial
+        addBotMessage("📊 **HISTORIAL DE CONVERSACIONES**\n\nTodas las conversaciones se guardan automáticamente para tu seguimiento.", null, false, false);
     }, 8000);
     
     setTimeout(() => {
-        // Mensaje 6: Información sobre historial
-        addBotMessage("📊 **HISTORIAL DE CONVERSACIONES**\n\nTodas las conversaciones se guardan automáticamente para tu seguimiento.", null, false, false);
-    }, 10000);
-    
-    setTimeout(() => {
-        // Mensaje 7: Invitación final
+        // Mensaje 6: Invitación final
         addBotMessage("🚀 **¡LISTO PARA COMENZAR!**\n\n¿En qué puedo ayudarte hoy? ¡Estoy aquí para hacer tu aprendizaje más fácil y divertido!", getBackButton(), false, false);
-    }, 12000);
+    }, 10000);
 }
 
 // Mostrar temas
@@ -399,6 +450,127 @@ function showHelp() {
     }, 7500);
 }
 
+// Función para hacer llamadas a OpenAI de forma segura
+async function callOpenAI(prompt, context = '') {
+    try {
+        const response = await fetch('/api/openai', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': getApiKey(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ prompt, context })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.response;
+    } catch (error) {
+        console.error('Error llamando a OpenAI:', error);
+        return null;
+    }
+}
+
+// Función para consultar la base de datos de forma segura
+async function queryDatabase(query, params = []) {
+    try {
+        const response = await fetch('/api/database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': getApiKey(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ query, params })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.data;
+    } catch (error) {
+        console.error('Error consultando base de datos:', error);
+        return [];
+    }
+}
+
+// Función para obtener contexto de la base de datos de forma segura
+async function getDatabaseContext(userQuestion) {
+    try {
+        const response = await fetch('/api/context', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': getApiKey(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ userQuestion })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.data;
+    } catch (error) {
+        console.error('Error obteniendo contexto de BD:', error);
+        return [];
+    }
+}
+
+// Función para obtener la API key de forma segura
+function getApiKey() {
+    // En producción, esto debería venir de una sesión segura o token JWT
+    // Por ahora, usamos una clave generada dinámicamente basada en la sesión
+    const sessionKey = sessionStorage.getItem('apiKey') || generateSessionKey();
+    sessionStorage.setItem('apiKey', sessionKey);
+    return sessionKey;
+}
+
+// Función para generar una clave de sesión temporal
+function generateSessionKey() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2);
+    return btoa(`${timestamp}-${random}`).replace(/[^a-zA-Z0-9]/g, '');
+}
+
+// Procesar mensaje del usuario con IA
+async function processUserMessageWithAI(message) {
+    try {
+        // Obtener contexto de la base de datos
+        const dbContext = await getDatabaseContext(message);
+        
+        // Construir el prompt con contexto
+        const contextInfo = dbContext.length > 0 ? 
+            `\n\nInformación adicional de la base de datos:\n${JSON.stringify(dbContext, null, 2)}` : '';
+        
+        const fullPrompt = `Usuario: ${message}${contextInfo}\n\nResponde de manera educativa y útil en español.`;
+        
+        // Llamar a OpenAI
+        const aiResponse = await callOpenAI(fullPrompt, contextInfo);
+        
+        if (aiResponse) {
+            return aiResponse;
+        } else {
+            // Fallback a respuestas predefinidas
+            return generateResponse(message.toLowerCase());
+        }
+    } catch (error) {
+        console.error('Error procesando mensaje con IA:', error);
+        return generateResponse(message.toLowerCase());
+    }
+}
+
 // Enviar mensaje
 function sendMessage() {
     const message = messageInput.value.trim();
@@ -408,13 +580,17 @@ function sendMessage() {
     messageInput.value = '';
     messageInput.style.height = 'auto';
 
-    setTimeout(() => {
-        handleUserMessage(message);
+    // Mostrar indicador de escritura
+    showTypingIndicator();
+
+    setTimeout(async () => {
+        hideTypingIndicator();
+        await handleUserMessage(message);
     }, 500);
 }
 
 // Procesar mensaje del usuario
-function handleUserMessage(message) {
+async function handleUserMessage(message) {
     if (!chatState.userName && chatState.currentState === 'start') {
         // Primer mensaje es el nombre del usuario
         if (message.split(' ').length >= 2) {
@@ -428,9 +604,8 @@ function handleUserMessage(message) {
             addBotMessage("⚠️ Por favor proporciona tu nombre y apellido completos.", null, true, false);
         }
     } else {
-        // Procesar otros mensajes
-        const lowerMessage = message.toLowerCase();
-        const response = generateResponse(lowerMessage);
+        // Procesar otros mensajes con IA
+        const response = await processUserMessageWithAI(message);
         addBotMessage(response, null, false, false);
     }
 }
@@ -499,6 +674,39 @@ function setAudioVolume(volume) {
         CHATBOT_CONFIG.welcomeAudio.volume = volume;
         console.log('Volumen configurado a:', volume);
     }
+}
+
+// Mostrar indicador de escritura
+function showTypingIndicator() {
+    if (chatState.isTyping) return;
+    
+    chatState.isTyping = true;
+    
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'message bot-message typing-indicator';
+    typingDiv.id = 'typingIndicator';
+    
+    typingDiv.innerHTML = `
+        <div class="message-bubble">
+            <div class="loading">
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(typingDiv);
+    scrollToBottom();
+}
+
+// Ocultar indicador de escritura
+function hideTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+    chatState.isTyping = false;
 }
 
 // Exportar funciones para uso externo

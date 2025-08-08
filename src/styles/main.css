@@ -5,22 +5,52 @@
     box-sizing: border-box;
 }
 
+:root {
+    --color-bg-1: #071124;   /* muy oscuro */
+    --color-bg-2: #0f1a2f;   /* navy */
+    --color-surface: #07254a;/* paneles */
+    --color-accent: #0a3663; /* azul medio */
+    --color-secondary: #0d7a8a; /* teal oscuro */
+    --color-primary: #04c2d1; /* cian brillante */
+    --text-on-dark: #e8f4ff;
+    --text-muted: #9db1c7;
+    --glass: rgba(7, 17, 36, 0.6);
+    --glass-strong: rgba(7, 17, 36, 0.8);
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 20px;
     line-height: 1.6;
+    color: var(--text-on-dark);
+    background:
+        /* malla sutil */
+        repeating-linear-gradient(
+            0deg,
+            rgba(255,255,255,0.03) 0 1px,
+            transparent 1px 40px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255,255,255,0.03) 0 1px,
+            transparent 1px 40px
+        ),
+        radial-gradient(1200px 800px at 20% 0%, rgba(4, 194, 209, 0.08), transparent 60%),
+        radial-gradient(800px 600px at 80% 100%, rgba(10, 54, 99, 0.12), transparent 60%),
+        linear-gradient(160deg, var(--color-bg-1) 0%, var(--color-bg-2) 100%);
 }
 
 /* Contenedor principal */
 .telegram-container {
-    background: #ffffff;
+    background: var(--glass);
+    border: 1px solid rgba(4, 194, 209, 0.18);
     border-radius: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(4, 194, 209, 0.06) inset;
     width: 100%;
     max-width: 400px;
     height: 700px;
@@ -32,26 +62,31 @@ body {
 
 /* Header del chat */
 .chat-header {
-    background: #2481cc;
-    color: white;
+    background: linear-gradient(135deg, var(--color-accent), var(--color-secondary));
+    color: var(--text-on-dark);
     padding: 15px 20px;
     display: flex;
     align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    border-bottom: 1px solid rgba(4, 194, 209, 0.25);
     z-index: 10;
+    position: relative;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.25);
 }
 
 .bot-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(45deg, #ff6b35, #ff8e53);
+    background: radial-gradient(closest-side, var(--color-primary), var(--color-secondary));
     margin-right: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    color: #071124;
+    box-shadow: 0 0 0 2px rgba(4, 194, 209, 0.35), 0 8px 16px rgba(0,0,0,0.35);
+    animation: glowPulse 4s ease-in-out infinite;
 }
 
 .chat-info h3 {
@@ -63,6 +98,7 @@ body {
 .chat-info p {
     font-size: 12px;
     opacity: 0.8;
+    color: var(--text-muted);
 }
 
 /* Área de mensajes */
@@ -70,9 +106,33 @@ body {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
-    background: #f8f9fa;
+    background:
+        radial-gradient(1000px 700px at 85% 10%, rgba(4, 194, 209, 0.06), transparent 60%),
+        radial-gradient(900px 600px at 10% 90%, rgba(13, 122, 138, 0.06), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0)),
+        var(--glass-strong);
     scroll-behavior: smooth;
+    position: relative;
+    z-index: 0;
 }
+
+/* Partículas sutiles en el fondo del área de mensajes */
+.chat-messages::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(6px 6px at 10% 20%, rgba(4, 194, 209, 0.35), transparent 60%),
+        radial-gradient(8px 8px at 80% 30%, rgba(13, 122, 138, 0.25), transparent 60%),
+        radial-gradient(4px 4px at 40% 80%, rgba(4, 194, 209, 0.25), transparent 60%),
+        radial-gradient(5px 5px at 60% 60%, rgba(4, 194, 209, 0.18), transparent 60%);
+    pointer-events: none;
+    opacity: 0.22;
+    animation: floatStars 24s linear infinite;
+    z-index: 0;
+}
+
+.chat-messages > * { position: relative; z-index: 1; }
 
 .message {
     margin-bottom: 15px;
@@ -95,36 +155,62 @@ body {
     max-width: 80%;
     word-wrap: break-word;
     position: relative;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25), 0 0 0 1px rgba(4, 194, 209, 0.08) inset;
+    transition: transform .18s ease, box-shadow .2s ease, filter .2s ease, background-position .4s ease, border-color .18s ease;
+    will-change: transform, box-shadow;
 }
 
 .bot-message .message-bubble {
-    background: white;
-    color: #333;
+    background: rgba(11, 29, 56, 0.85);
+    color: var(--text-on-dark);
+    border: 1px solid rgba(4, 194, 209, 0.20);
     border-bottom-left-radius: 4px;
+    animation: popInLeft 0.35s ease both;
 }
 
 .user-message .message-bubble {
-    background: #2481cc;
-    color: white;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    color: #071124;
+    font-weight: 600;
     border-bottom-right-radius: 4px;
+    background-size: 200% 200%;
+    animation: popInRight 0.35s ease both, gradientShift 12s ease infinite;
+}
+
+/* Hover/Lift e iluminación sutil en mensajes (solo en dispositivos con cursor) */
+@media (hover: hover) and (pointer: fine) {
+    .message-bubble:hover {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 10px 22px rgba(0,0,0,0.4), 0 0 0 1px rgba(4, 194, 209, 0.18) inset, 0 0 16px rgba(4, 194, 209, 0.22);
+        filter: brightness(1.06);
+    }
+
+    .bot-message .message-bubble:hover {
+        border-color: rgba(4, 194, 209, 0.35);
+    }
 }
 
 /* Input del chat */
 .chat-input {
-    background: white;
+    background: rgba(6, 20, 40, 0.85);
     padding: 15px 20px;
-    border-top: 1px solid #e9ecef;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    border-top: 1px solid rgba(4, 194, 209, 0.15);
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.35);
 }
 
 .input-container {
     display: flex;
     align-items: center;
-    background: #f8f9fa;
+    background: rgba(255,255,255,0.04);
     border-radius: 25px;
     padding: 8px 15px;
-    border: 1px solid #e9ecef;
+    border: 1px solid rgba(4, 194, 209, 0.2);
+}
+
+.input-container:focus-within {
+    border-color: rgba(4, 194, 209, 0.55);
+    box-shadow: 0 0 0 3px rgba(4, 194, 209, 0.18);
+    animation: glowPulse 3s ease-in-out infinite;
 }
 
 #messageInput {
@@ -133,16 +219,17 @@ body {
     background: transparent;
     outline: none;
     font-size: 14px;
-    color: #333;
+    color: var(--text-on-dark);
     padding: 8px 0;
+    caret-color: var(--color-primary);
 }
 
 #messageInput::placeholder {
-    color: #6c757d;
+    color: var(--text-muted);
 }
 
 .send-button {
-    background: #2481cc;
+    background: var(--color-primary);
     border: none;
     border-radius: 50%;
     width: 36px;
@@ -152,17 +239,45 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    color: white;
+    color: #071124;
     margin-left: 8px;
+    box-shadow: 0 8px 16px rgba(4, 194, 209, 0.25), 0 0 0 2px rgba(4, 194, 209, 0.25);
+    animation: glowPulse 3.2s ease-in-out infinite;
+    position: relative;
+    overflow: hidden;
 }
 
 .send-button:hover {
-    background: #1a6bb3;
+    background: #33d7e1;
     transform: scale(1.05);
 }
 
 .send-button:active {
     transform: scale(0.95);
+}
+
+.send-button svg {
+    transition: transform 0.25s ease;
+}
+
+.send-button:hover svg {
+    transform: translateX(2px);
+}
+
+/* Efecto ripple para botón de envío */
+.send-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255,255,255,0.35) 0, rgba(255,255,255,0) 60%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform .45s ease, opacity .6s ease;
+}
+
+.send-button:active::after {
+    transform: scale(2.4);
+    opacity: 0.55;
 }
 
 /* Animaciones */
@@ -186,12 +301,55 @@ body {
     }
 }
 
+/* Nuevas animaciones */
+@keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(4, 194, 209, 0.25), 0 8px 16px rgba(0,0,0,0.35); }
+    50% { box-shadow: 0 0 0 4px rgba(4, 194, 209, 0.35), 0 12px 24px rgba(0,0,0,0.45); }
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes riseIn {
+    0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(50%); }
+}
+
+@keyframes popInLeft {
+    0% { opacity: 0; transform: translateY(10px) translateX(-12px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+}
+
+@keyframes popInRight {
+    0% { opacity: 0; transform: translateY(10px) translateX(12px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) translateX(0) scale(1); }
+}
+
+@keyframes floatStars {
+    0% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
+    50% { background-position: 10% 5%, 90% 10%, 5% 90%, 95% 95%; }
+    100% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
+}
+
+@keyframes dotBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+}
+
 /* Indicador de escritura */
 .typing-indicator {
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    background: white;
+    background: rgba(11, 29, 56, 0.85);
     border-radius: 18px;
     border-bottom-left-radius: 4px;
     max-width: 80px;
@@ -202,9 +360,9 @@ body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #6c757d;
+    background: var(--color-primary);
     margin: 0 2px;
-    animation: typing 1.4s infinite ease-in-out;
+    animation: typing 1.4s infinite ease-in-out, dotBounce 1.4s infinite ease-in-out;
 }
 
 .typing-dot:nth-child(1) {
@@ -248,7 +406,7 @@ body {
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: linear-gradient(180deg, rgba(4, 194, 209, 0.6), rgba(13, 122, 138, 0.6));
     border-radius: 3px;
 }
 
@@ -264,9 +422,9 @@ body {
 
 /* Mensajes de error */
 .error-message {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background: rgba(208, 61, 71, 0.12);
+    color: #ffd5d9;
+    border: 1px solid rgba(208, 61, 71, 0.35);
     border-radius: 8px;
     padding: 12px;
     margin: 10px 0;
@@ -282,25 +440,25 @@ body {
 }
 
 .nav-button {
-    background: #e9ecef;
-    border: none;
+    background: transparent;
+    border: 1px solid rgba(4, 194, 209, 0.35);
     border-radius: 15px;
     padding: 8px 16px;
     font-size: 12px;
-    color: #495057;
+    color: var(--text-on-dark);
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
 }
 
 .nav-button:hover {
-    background: #2481cc;
-    color: white;
+    background: var(--color-primary);
+    color: #071124;
 }
 
 .nav-button.active {
-    background: #2481cc;
-    color: white;
+    background: var(--color-primary);
+    color: #071124;
 } 
 
 /* Estilos para botones inline keyboard */
@@ -318,34 +476,72 @@ body {
 .keyboard-button {
     flex: 1;
     padding: 10px 12px;
-    background: #f0f8ff;
-    border: 2px solid #2481cc;
+    background: transparent;
+    border: 1.5px solid var(--color-primary);
     border-radius: 12px;
-    color: #2481cc;
-    font-weight: 500;
+    color: var(--color-primary);
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 14px;
     text-align: center;
     outline: none;
     user-select: none;
+    animation: riseIn 0.35s ease both;
+    position: relative;
+    overflow: hidden;
 }
 
 .keyboard-button:hover {
-    background: #2481cc;
-    color: white;
+    background: var(--color-primary);
+    color: #071124;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(36, 129, 204, 0.3);
+    box-shadow: 0 6px 16px rgba(4, 194, 209, 0.35);
 }
 
 .keyboard-button:active {
     transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(36, 129, 204, 0.3);
+    box-shadow: 0 2px 6px rgba(4, 194, 209, 0.35);
 }
 
 .keyboard-button:focus {
-    outline: 2px solid #2481cc;
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+}
+
+/* Ripple en botones del teclado */
+.keyboard-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(4, 194, 209, 0.35) 0, rgba(4, 194, 209, 0) 60%);
+    transform: scale(0);
+    opacity: 0;
+    transition: transform .45s ease, opacity .6s ease;
+}
+
+.keyboard-button:active::after {
+    transform: scale(2.3);
+    opacity: 0.6;
+}
+
+/* Escalonado para botones dentro de cada fila */
+.keyboard-row .keyboard-button:nth-child(1) { animation-delay: 40ms; }
+.keyboard-row .keyboard-button:nth-child(2) { animation-delay: 90ms; }
+.keyboard-row .keyboard-button:nth-child(3) { animation-delay: 140ms; }
+.keyboard-row .keyboard-button:nth-child(4) { animation-delay: 190ms; }
+
+/* Brillo animado en el borde superior del contenedor */
+.telegram-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -50%;
+    width: 200%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(4, 194, 209, 0.9), transparent);
+    animation: shimmer 6s linear infinite;
+    opacity: 0.7;
 }
 
 /* Responsive para botones */

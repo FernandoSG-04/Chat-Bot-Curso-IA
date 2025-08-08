@@ -166,8 +166,8 @@ function initializeChat() {
         } catch (_) {}
 
         const greeting = chatState.userName
-            ? `¡Hola, ${chatState.userName}! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`
-            : `¡Hola! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`;
+            ? `¡Hola, ${chatState.userName}!  Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`
+            : `¡Hola!  Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`;
 
         await sendBotMessage(greeting, null, false, true);
         await showWelcomeInstructions();
@@ -278,7 +278,12 @@ async function sendBotMessage(text, keyboard = null, needsUserInput = false, pla
     await new Promise(r => setTimeout(r, delay));
     hideTypingIndicator();
     setHeaderTyping(false);
-    addBotMessage(clean, keyboard, needsUserInput, playAudio);
+    // Si el último mensaje es del bot y estamos mostrando opciones, edítalo
+    if (keyboard && chatMessages.querySelectorAll('.message.bot-message:not(.typing-indicator)').length > 0) {
+        replaceLastBotMessage(clean, keyboard);
+    } else {
+        addBotMessage(clean, keyboard, needsUserInput, playAudio);
+    }
 }
 
 // Agregar mensaje del bot
@@ -312,14 +317,35 @@ function addBotMessage(text, keyboard = null, needsUserInput = false, playAudio 
         timestamp: new Date()
     });
 
-    if (!needsUserInput && !keyboard) {
-        setTimeout(() => {
-            if (chatState.currentState === 'start' && !chatState.userName) {
-                // No hacer nada, esperar input del usuario
-            } else if (chatState.currentState === 'start') {
-                showMainMenu();
-            }
-        }, 1000);
+    // Evitar mostrar automáticamente el menú principal aquí.
+    // El menú se mostrará explícitamente al final del flujo de bienvenida
+    // o después de capturar el nombre del usuario.
+}
+
+// Reemplazar el último mensaje del bot para no saturar el chat
+function replaceLastBotMessage(text, keyboard = null) {
+    const botMessages = Array.from(chatMessages.querySelectorAll('.message.bot-message'))
+        .filter(el => !el.classList.contains('typing-indicator'));
+    const last = botMessages[botMessages.length - 1];
+    if (!last) {
+        addBotMessage(text, keyboard, false, false);
+        return;
+    }
+    const avatarHTML = getBotAvatarHTML();
+    last.innerHTML = `
+        ${avatarHTML}
+        <div class="message-bubble">
+            ${String(text).replace(/\*\*/g, '')}
+            ${keyboard ? keyboard : ''}
+        </div>
+    `;
+    scrollToBottom();
+    // Actualizar último registro en historial
+    for (let i = chatState.conversationHistory.length - 1; i >= 0; i--) {
+        if (chatState.conversationHistory[i].type === 'bot') {
+            chatState.conversationHistory[i].content = text;
+            break;
+        }
     }
 }
 
@@ -373,9 +399,6 @@ function showMainMenu() {
     const keyboard = `
         <div class="inline-keyboard">
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showWelcomeInstructions()">🎵 Bienvenida e Instrucciones</button>
-            </div>
-            <div class="keyboard-row">
                 <button class="keyboard-button" onclick="showTopics()">📚 Temas del Curso</button>
             </div>
             <div class="keyboard-row">
@@ -387,8 +410,14 @@ function showMainMenu() {
         </div>
     `;
     
+    // Evitar duplicados: comprobar último mensaje si ya es un menú
+    const last = chatState.conversationHistory[chatState.conversationHistory.length - 1];
+    const header = '¡Perfecto! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:';
     const name = chatState.userName ? `, ${chatState.userName}` : '';
-    addBotMessage(`¡Perfecto${name}! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:`, keyboard, false, false);
+    const text = `¡Perfecto${name}! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:`;
+    if (!last || typeof last.content !== 'string' || !last.content.includes('Aquí tienes el menú principal')) {
+        addBotMessage(text, keyboard, false, false);
+    }
     chatState.currentState = 'main_menu';
 }
 
@@ -397,7 +426,6 @@ async function showWelcomeInstructions() {
     await sendBotMessage("📝 INSTRUCCIONES DE ESCRITURA\n\nPuedes escribir cualquier pregunta y presionar Enter o hacer clic en el botón enviar.");
     await sendBotMessage("❓ TIPOS DE PREGUNTAS\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido");
     await sendBotMessage("⌨️ COMANDOS ESPECIALES\n\n• 'ayuda' - Para ver estas instrucciones nuevamente\n• 'temas' - Para ver los temas disponibles\n• 'ejercicios' - Para solicitar ejercicios prácticos");
-    await sendBotMessage("🎧 INFORMACIÓN SOBRE AUDIO\n\nEl chatbot reproduce audio automáticamente en el mensaje de bienvenida. Puedes activar o desactivar el audio usando la función toggleAudio().");
     await sendBotMessage("📊 HISTORIAL DE CONVERSACIONES\n\nTodas las conversaciones se guardan automáticamente para tu seguimiento.");
     // Mostrar el menú principal al final de toda la información
     showMainMenu();
@@ -423,32 +451,61 @@ function showTopics() {
         </div>
     `;
     
-    sendBotMessage("📚 TEMAS DISPONIBLES\n\nSelecciona el tema que te interesa:", keyboard, false, false);
+    // Edita el último mensaje para evitar saturación
+    replaceLastBotMessage("📚 TEMAS DISPONIBLES\n\nSelecciona el tema que te interesa:", keyboard);
 }
 
 // Mostrar tema específico
 function showTopic(topic) {
-    const topics = {
-        'fundamentos': {
-            title: '🤖 Fundamentos de IA',
-            content: '• ¿Qué es la inteligencia artificial?\n• Historia y evolución de la IA\n• Tipos de inteligencia artificial\n• Aplicaciones básicas de IA'
-        },
-        'ml': {
-            title: '📊 Machine Learning',
-            content: '• Conceptos básicos de ML\n• Algoritmos de aprendizaje supervisado\n• Algoritmos de aprendizaje no supervisado\n• Evaluación de modelos'
-        },
-        'deep': {
-            title: '🧠 Deep Learning',
-            content: '• Redes neuronales artificiales\n• Redes neuronales convolucionales (CNN)\n• Redes neuronales recurrentes (RNN)\n• Frameworks populares'
-        },
-        'aplicaciones': {
-            title: '🎯 Aplicaciones Prácticas',
-            content: '• Procesamiento de lenguaje natural\n• Visión por computadora\n• Sistemas de recomendación\n• Chatbots y asistentes virtuales'
-        }
+    showSessionsForTopic(topic);
+}
+
+// Mostrar selector de sesiones 1..4 para un tema
+function showSessionsForTopic(topic) {
+    const topicTitles = {
+        'fundamentos': '🤖 Fundamentos de IA',
+        'ml': '📊 Machine Learning',
+        'deep': '🧠 Deep Learning',
+        'aplicaciones': '🎯 Aplicaciones Prácticas'
     };
-    
-    const selectedTopic = topics[topic];
-    sendBotMessage(`${selectedTopic.title}\n\n${selectedTopic.content}`, getBackButton(), false, false);
+
+    const keyboard = `
+        <div class="inline-keyboard">
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="openTopicSession('${topic}', 1)">📘 Sesión 1</button>
+                <button class="keyboard-button" onclick="openTopicSession('${topic}', 2)">📗 Sesión 2</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="openTopicSession('${topic}', 3)">📙 Sesión 3</button>
+                <button class="keyboard-button" onclick="openTopicSession('${topic}', 4)">📕 Sesión 4</button>
+            </div>
+            ${getBackButton()}
+        </div>
+    `;
+
+    replaceLastBotMessage(`${topicTitles[topic] || '📚 Tema'}\n\nSelecciona la sesión a la que quieres ir:`, keyboard);
+}
+
+// Acción al seleccionar una sesión
+function openTopicSession(topic, session) {
+    const titles = {
+        'fundamentos': '🤖 Fundamentos de IA',
+        'ml': '📊 Machine Learning',
+        'deep': '🧠 Deep Learning',
+        'aplicaciones': '🎯 Aplicaciones Prácticas'
+    };
+    const title = titles[topic] || '📚 Tema';
+
+    const keyboard = `
+        <div class="inline-keyboard">
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="showSessionsForTopic('${topic}')">⬅️ Volver a Sesiones</button>
+            </div>
+            ${getBackButton()}
+        </div>
+    `;
+
+    replaceLastBotMessage(`${title} — Sesión ${session}\n\nCargando contenido…`, keyboard);
 }
 
 // Mostrar ejercicios
@@ -793,5 +850,10 @@ window.Chatbot = {
     toggleAudio,
     getAudioStatus,
     setAudioVolume,
-    playWelcomeAudio
+    playWelcomeAudio,
+    // Exponer funciones usadas por botones inline
+    showTopics,
+    showTopic,
+    showSessionsForTopic,
+    openTopicSession
 }; 

@@ -73,12 +73,12 @@ body {
 .wrapper {
     background: var(--glass);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(7, 17, 36, 0.3);
+    border: 1px solid rgba(68,229,255,0.18);
     border-radius: 20px;
     padding: 40px;
     width: 100%;
     max-width: 400px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(7, 17, 36, 0.06) inset;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(68,229,255,0.06) inset;
     position: relative;
     z-index: 2;
     animation: slideInUp 0.8s ease-out;
@@ -152,7 +152,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 0 2px rgba(7, 17, 36, 0.35), 0 8px 16px rgba(0,0,0,0.35);
+    box-shadow: 0 0 0 2px rgba(68,229,255,0.35), 0 8px 16px rgba(0,0,0,0.35);
     animation: glowPulse 4s ease-in-out infinite;
 }
 
@@ -237,7 +237,7 @@ body {
     width: 100%;
     padding: 15px 45px 15px 20px;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(7, 17, 36, 0.3);
+    border: 1px solid rgba(68,229,255,0.18);
     border-radius: 25px;
     color: var(--text-on-dark);
     font-size: 1rem;
@@ -251,8 +251,8 @@ body {
 
 .input-box input:focus {
     outline: none;
-    border-color: rgba(7, 17, 36, 0.6);
-    box-shadow: 0 0 0 3px rgba(7, 17, 36, 0.18);
+    border-color: rgba(68,229,255,0.45);
+    box-shadow: 0 0 0 3px rgba(68, 229, 255, 0.18);
     background: rgba(255, 255, 255, 0.15);
 }
 
@@ -261,13 +261,13 @@ body {
     right: 15px;
     top: 50%;
     transform: translateY(-50%);
-    color: var(--color-bg-1);
+    color: var(--color-secondary);
     font-size: 1.2rem;
     transition: all 0.3s ease;
 }
 
 .input-box input:focus + i {
-    color: var(--color-bg-2);
+    color: var(--color-primary);
     transform: translateY(-50%) scale(1.1);
 }
 

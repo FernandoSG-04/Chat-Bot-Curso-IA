@@ -1179,27 +1179,24 @@ function getUserAuthHeaders() {
 // Procesar mensaje del usuario con IA
 async function processUserMessageWithAI(message) {
     try {
-        // Obtener contexto de la base de datos
+        // Obtener contexto de la base de datos (si está disponible)
         const dbContext = await getDatabaseContext(message);
         
         // Construir el prompt con contexto
         const contextInfo = dbContext.length > 0 ? 
             `\n\nInformación adicional de la base de datos:\n${JSON.stringify(dbContext, null, 2)}` : '';
         
-        const fullPrompt = `Usuario: ${message}${contextInfo}\n\nResponde de manera educativa y útil en español.`;
+        // Añadir delimitadores de alcance para reforzar casos de uso
+        const scope = `\n\n[ÁMBITO]\n- Responder solo sobre el curso de IA y sus actividades.\n- Si está fuera de alcance, reconducir con 2–4 opciones del temario.`;
+        const fullPrompt = `Usuario: ${message}${contextInfo}${scope}\n\nResponde de manera educativa y útil en español.`;
         
         // Llamar a OpenAI
         const aiResponse = await callOpenAI(fullPrompt, contextInfo);
-        
-        if (aiResponse) {
-            return aiResponse;
-        } else {
-            // Fallback a respuestas predefinidas
-            return generateResponse(message.toLowerCase());
-        }
+        return aiResponse;
     } catch (error) {
         console.error('Error procesando mensaje con IA:', error);
-        return generateResponse(message.toLowerCase());
+        // Devolver mensaje de error específico en lugar de fallback genérico
+        return `⚠️ Error conectando con el asistente: ${error.message}\n\nPor favor, revisa la configuración o inténtalo más tarde. Si el problema persiste, verifica las variables de entorno del servidor.`;
     }
 }
 

@@ -167,11 +167,12 @@ function getPrompts() {
     const tools = safeRead(path.join(base, 'tools.es.md'));
     const safety = safeRead(path.join(base, 'safety.es.md'));
     const examples = safeRead(path.join(base, 'examples.es.md'));
-    const combined = [system, style, safety, tools]
+    const useCases = safeRead(path.join(base, 'use_cases.es.md'));
+    const combined = [system, style, safety, tools, useCases]
         .filter(Boolean)
         .join('\n\n')
         .trim();
-    return { system, style, tools, safety, examples, combined };
+    return { system, style, tools, safety, useCases, examples, combined };
 }
 
 // Configuración de almacenamiento para audio (Multer)
@@ -218,8 +219,8 @@ app.get('/api/config', authenticateRequest, (req, res) => {
         // Solo devolver configuración no sensible
         const prompts = getPrompts();
         res.json({
-            openaiModel: process.env.CHATBOT_MODEL || 'gpt-4',
-            maxTokens: process.env.CHATBOT_MAX_TOKENS || 1000,
+            openaiModel: process.env.CHATBOT_MODEL || 'gpt-4o-mini',
+            maxTokens: process.env.CHATBOT_MAX_TOKENS || 700,
             temperature: process.env.CHATBOT_TEMPERATURE || 0.7,
             audioEnabled: process.env.AUDIO_ENABLED === 'true',
             audioVolume: process.env.AUDIO_VOLUME || 0.7,
@@ -270,20 +271,31 @@ app.post('/api/openai', authenticateRequest, requireUserSession, async (req, res
             return res.status(400).json({ error: 'Prompt requerido' });
         }
 
+        // Validar que existe la API key de OpenAI
+        if (!process.env.OPENAI_API_KEY) {
+            console.error('OPENAI_API_KEY no configurada en variables de entorno');
+            return res.status(500).json({ 
+                error: 'Configuración de OpenAI faltante', 
+                details: 'OPENAI_API_KEY no está configurada en el servidor' 
+            });
+        }
+
         const { combined, examples } = getPrompts();
         const systemContent = (
-            (combined || `Eres un asistente educativo en español.`) +
+            (combined || `Eres un asistente educativo en español especializado en inteligencia artificial.`) +
             (context ? `\n\nContexto adicional (BD/UI):\n${context}` : '')
         ).trim();
 
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        // compatibilidad con Node < 18
+        const fetchImpl = (global.fetch ? global.fetch.bind(global) : (await import('node-fetch')).default);
+        const response = await fetchImpl('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
             },
             body: JSON.stringify({
-                model: process.env.CHATBOT_MODEL || 'gpt-4',
+                model: process.env.CHATBOT_MODEL || 'gpt-4o-mini',
                 messages: [
                     {
                         role: 'system',
@@ -295,20 +307,39 @@ app.post('/api/openai', authenticateRequest, requireUserSession, async (req, res
                         content: prompt
                     }
                 ],
-                max_tokens: parseInt(process.env.CHATBOT_MAX_TOKENS) || 1000,
-                temperature: parseFloat(process.env.CHATBOT_TEMPERATURE) || 0.7
+                max_tokens: parseInt(process.env.CHATBOT_MAX_TOKENS) || 700,
+                temperature: parseFloat(process.env.CHATBOT_TEMPERATURE) || 0.7,
+                top_p: 0.9
             })
         });
 
         if (!response.ok) {
-            throw new Error(`Error en la API de OpenAI: ${response.status}`);
+            const errText = await response.text();
+            console.error(`Error OpenAI API ${response.status}:`, errText);
+            return res.status(500).json({ 
+                error: 'Error en la API de OpenAI', 
+                details: `Status ${response.status}: ${errText.substring(0, 200)}` 
+            });
         }
 
         const data = await response.json();
-        res.json({ response: data.choices[0].message.content });
+        const content = data?.choices?.[0]?.message?.content;
+        
+        if (!content) {
+            console.error('Respuesta vacía de OpenAI:', JSON.stringify(data));
+            return res.status(500).json({ 
+                error: 'Respuesta vacía de OpenAI', 
+                details: 'La API no devolvió contenido válido' 
+            });
+        }
+
+        res.json({ response: content.trim() });
     } catch (error) {
         console.error('Error llamando a OpenAI:', error);
-        res.status(500).json({ error: 'Error procesando la solicitud' });
+        res.status(500).json({ 
+            error: 'Error procesando la solicitud', 
+            details: error.message || String(error) 
+        });
     }
 });
 

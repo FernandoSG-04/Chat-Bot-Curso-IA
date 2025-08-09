@@ -716,16 +716,159 @@ function openTopicSession(topic, session) {
     };
     const title = titles[topic] || '📚 Tema';
 
-    const keyboard = `
+    const keyboard = getSessionActionsKeyboard(topic, session);
+
+    replaceLastBotMessage(`${title} — Sesión ${session}\n\nSelecciona una acción:`, keyboard);
+}
+
+function getSessionActionsKeyboard(topic, session) {
+    return `
         <div class="inline-keyboard">
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.showCollaborativeActivities('${topic}', ${session})">🤝 Actividades Colaborativas</button>
+                <button class="keyboard-button" onclick="Chatbot.startQuiz('${topic}', ${session})">📝 Cuestionario</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.showFAQ('${topic}', ${session})">❓ FAQ</button>
+                <button class="keyboard-button" onclick="Chatbot.copyPrompts('${topic}', ${session})">📋 Copiar Prompts</button>
+            </div>
             <div class="keyboard-row">
                 <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('${topic}')">⬅️ Volver a Sesiones</button>
             </div>
             ${getBackButton()}
         </div>
     `;
+}
 
-    replaceLastBotMessage(`${title} — Sesión ${session}\n\nCargando contenido…`, keyboard);
+function showCollaborativeActivities(topic, session) {
+    const activities = `
+• Debate guiado: Ventajas y límites de ${topic} (Sesión ${session})
+• Parejas: Explica el concepto y comparte ejemplo real
+• Mini-proyecto: Diseña un caso de uso y métricas de éxito
+`; 
+    sendBotMessage(`🤝 ACTIVIDADES COLABORATIVAS — Sesión ${session}\n\n${activities}`, getSessionActionsKeyboard(topic, session), false, false);
+}
+
+function startQuiz(topic, session) {
+    const quizIntro = `📝 CUESTIONARIO — Sesión ${session}\n\nResponde brevemente (1–2 líneas).`;
+    const q = `
+1) Define en tus palabras el objetivo principal de esta sesión.
+2) Pon un ejemplo práctico del concepto clave visto.
+3) ¿Qué métrica usarías para evaluar el éxito?
+`;
+    sendBotMessage(`${quizIntro}\n\n${q}`, getSessionActionsKeyboard(topic, session), false, false);
+}
+
+function showFAQ(topic, session) {
+    const faq = `
+• ¿Cuándo usar ${topic}?\n• ¿Qué errores comunes debo evitar?\n• ¿Qué recursos recomiendas para profundizar?`;
+    sendBotMessage(`❓ FAQ — Sesión ${session}\n\n${faq}`, getSessionActionsKeyboard(topic, session), false, false);
+}
+
+async function copyPrompts(topic, session) {
+    // Si es la primera sesión, mostrar panel lateral con instrucciones y botón copiar
+    if (session === 1) {
+        const promptText = `Actúa como un analista experto en inteligencia artificial generativa. Realiza una investigación exhaustiva con el título "Gen AI El Despertar de una Nueva Era Humana del miedo al entusiasmo" para identificar y analizar los siguientes puntos clave:\n\n- Evolución de la percepción: Describe el cambio en la percepción de la IA generativa desde su aparición masiva, incluyendo la reacción inicial y la mentalidad actual en la alta dirección.\n\n- Impacto transformador y ejemplos de uso actuales: Identifica cómo la IA generativa está redefiniendo la productividad humana y transformando modelos de negocio en diversas industrias. Proporciona ejemplos específicos de empresas y sectores que ya están utilizando la IA generativa, detallando las aplicaciones y los beneficios obtenidos.\n\n- Avances tecnológicos y ecosistema: Detalla las nuevas generaciones de modelos de IA generativa (Finales 2024-2025) y sus capacidades mejoradas. Describe el ecosistema de proveedores líderes y sus herramientas para entornos corporativos. Explica las estrategias de adopción de la IA generativa por parte de las empresas, incluyendo la elección entre modelos públicos y la construcción de IP propia.\n\n- Implicaciones humanas y sociales: Analiza cómo la IA generativa está democratizando el conocimiento, amplificando la creatividad y reimaginando el trabajo, destacando el valor humano en este nuevo escenario.\n\n- Casos de uso en finanzas y banca: Desglosa los casos de uso recientes de la IA generativa en el sector financiero y bancario, incluyendo asistentes virtuales, optimización de riesgos y cumplimiento, y personalización/eficiencia. Menciona las proyecciones de McKinsey para el futuro del trabajo en relación con la IA generativa.\n\n- Desafíos y consideraciones estratégicas para líderes: Extrae las recomendaciones clave para los CEOs y C-levels en la adopción e integración de la IA generativa, incluyendo la necesidad de ética, visión, valentía e inversión en talento.\n\nAsegúrate de citar cada dato o afirmación con el número de fuente correspondiente. Organiza tu respuesta de manera clara y concisa, utilizando un formato de investigación formal.`;
+        showPromptOverlay({
+            title: `Paso 1: Prompt de Investigación — Sesión ${session}`,
+            htmlIntro: `1. Abre <a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer">Gemini</a> y, en la caja de chat, copia y pega el siguiente prompt en su totalidad.<br/>2. Activa la herramienta <strong>deep research</strong> y ejecuta.`,
+            promptText,
+        });
+        return;
+    }
+
+    const prompts = [
+        `Explícame el concepto central de la sesión ${session} de ${topic} con un ejemplo simple`,
+        `Dame 3 ejercicios prácticos breves sobre la sesión ${session} de ${topic}`,
+        `Propón un mini‑proyecto aplicando lo visto en la sesión ${session} de ${topic}`
+    ].join('\n');
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(prompts);
+            sendBotMessage('📋 Prompts copiados al portapapeles.', getSessionActionsKeyboard(topic, session), false, false);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = prompts; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+            sendBotMessage('📋 Prompts copiados al portapapeles.', getSessionActionsKeyboard(topic, session), false, false);
+        }
+    } catch (e) {
+        sendBotMessage('⚠️ No se pudo copiar automáticamente. Aquí tienes los prompts:\n\n' + prompts, getSessionActionsKeyboard(topic, session), false, false);
+    }
+}
+
+// Panel lateral para prompts (similar al glosario)
+function showPromptOverlay({ title, htmlIntro, promptText }) {
+    let overlay = document.getElementById('promptOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'promptOverlay';
+        overlay.className = 'prompt-overlay';
+        overlay.innerHTML = `
+            <div class="prompt-panel">
+                <div class="prompt-header">
+                    <h3>📑 <span id="promptTitle"></span></h3>
+                    <button class="prompt-close" aria-label="Cerrar">×</button>
+                </div>
+                <div class="prompt-body">
+                    <div id="promptIntro" class="prompt-intro"></div>
+                    <div class="prompt-actions">
+                        <button id="copyPromptBtn" class="keyboard-button" style="max-width:200px">📋 Copiar Prompt</button>
+                    </div>
+                    <pre id="promptText" class="prompt-text"></pre>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.querySelector('.prompt-close').addEventListener('click', () => hidePromptOverlay());
+        overlay.querySelector('#copyPromptBtn').addEventListener('click', async () => {
+            const text = overlay.querySelector('#promptText').textContent;
+            try {
+                await navigator.clipboard.writeText(text);
+                overlay.querySelector('#copyPromptBtn').textContent = '✅ Copiado';
+                setTimeout(() => overlay.querySelector('#copyPromptBtn').textContent = '📋 Copiar Prompt', 1200);
+            } catch (_) {}
+        });
+    }
+    overlay.querySelector('#promptTitle').textContent = title || 'Prompt';
+    overlay.querySelector('#promptIntro').innerHTML = htmlIntro || '';
+    overlay.querySelector('#promptText').textContent = promptText || '';
+
+    const container = document.querySelector('.telegram-container');
+    const glossary = document.getElementById('glossaryOverlay');
+    const panel = overlay.querySelector('.prompt-panel');
+    if (glossary && glossary.classList.contains('open')) {
+        // si el prompt estaba a la derecha, animarlo hacia la izquierda suavemente
+        panel.classList.add('left');
+        if (container) {
+            container.classList.remove('shift-left');
+            container.style.transform = 'translateX(0) scale(0.975)';
+        }
+    } else {
+        panel.classList.remove('left');
+        if (container) {
+            container.classList.add('shift-left');
+            container.style.removeProperty('transform');
+        }
+    }
+    setTimeout(() => overlay.classList.add('open'), 80);
+}
+
+function hidePromptOverlay() {
+    const overlay = document.getElementById('promptOverlay');
+    const container = document.querySelector('.telegram-container');
+    if (overlay) overlay.classList.remove('open');
+    setTimeout(() => {
+        const glossary = document.getElementById('glossaryOverlay');
+        if (glossary && glossary.classList.contains('open')) {
+            if (container) {
+                container.classList.add('shift-left');
+                container.style.removeProperty('transform');
+            }
+        } else {
+            container?.classList.remove('shift-left');
+            container?.style.removeProperty('transform');
+        }
+    }, 150);
 }
 
 // Mostrar ejercicios
@@ -844,9 +987,18 @@ function showGlossary() {
         });
     }
 
-    // Animación: mover chat a la izquierda y mostrar panel (ligero escalonado)
+    // Animación: si el panel de prompts está abierto, centrar chat; si no, mover a la izquierda
     const container = document.querySelector('.telegram-container');
-    if (container) container.classList.add('shift-left');
+    const promptOverlay = document.getElementById('promptOverlay');
+    if (container) {
+        if (promptOverlay && promptOverlay.classList.contains('open')) {
+            container.classList.remove('shift-left');
+            container.style.transform = 'translateX(0) scale(0.975)';
+        } else {
+            container.classList.add('shift-left');
+            container.style.removeProperty('transform');
+        }
+    }
     setTimeout(() => overlay.classList.add('open'), 120);
 }
 
@@ -854,9 +1006,20 @@ function hideGlossary() {
     const overlay = document.getElementById('glossaryOverlay');
     const container = document.querySelector('.telegram-container');
     if (overlay) overlay.classList.remove('open');
-    // Retirar el desplazamiento del chat tras un pequeño retraso para que la salida sea más natural
+    // Ajustar posición del chat según si el panel de prompts sigue abierto
     setTimeout(() => {
-        if (container) container.classList.remove('shift-left');
+        const promptOverlay = document.getElementById('promptOverlay');
+        if (promptOverlay && promptOverlay.classList.contains('open')) {
+            if (container) {
+                container.classList.remove('shift-left');
+                container.style.transform = 'translateX(0) scale(0.975)';
+            }
+        } else {
+            if (container) {
+                container.classList.remove('shift-left');
+                container.style.removeProperty('transform');
+            }
+        }
     }, 150);
 }
 
@@ -1206,6 +1369,10 @@ window.Chatbot = {
     showTopic,
     showSessionsForTopic,
     openTopicSession,
+    showCollaborativeActivities,
+    startQuiz,
+    showFAQ,
+    copyPrompts,
     showExercises,
     showHelp,
     showGlossary

@@ -3,6 +3,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { Pool } = require('pg');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
 const app = express();
@@ -38,6 +42,9 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('src'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Servir prompts para depuración/inspección (protegido por API en endpoints abajo)
+app.use('/prompts', express.static(path.join(__dirname, 'prompts')));
 
 // Redirigir la raíz al inicio de sesión
 app.get('/', (req, res) => {
@@ -64,19 +71,93 @@ function authenticateRequest(req, res, next) {
     next();
 }
 
+// Utilidades para cargar prompts de /prompts
+function safeRead(filePath) {
+    try {
+        return fs.readFileSync(filePath, 'utf8');
+    } catch (_) {
+        return '';
+    }
+}
+
+function getPrompts() {
+    const base = path.join(__dirname, 'prompts');
+    const system = safeRead(path.join(base, 'system.es.md'));
+    const style = safeRead(path.join(base, 'style.es.md'));
+    const tools = safeRead(path.join(base, 'tools.es.md'));
+    const safety = safeRead(path.join(base, 'safety.es.md'));
+    const examples = safeRead(path.join(base, 'examples.es.md'));
+    const combined = [system, style, safety, tools]
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+    return { system, style, tools, safety, examples, combined };
+}
+
+// Configuración de almacenamiento para audio (Multer)
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname || '.webm') || '.webm';
+        cb(null, `audio_${uuidv4()}${ext}`);
+    }
+});
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+        const allowed = ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'video/webm'];
+        if (allowed.includes(file.mimetype)) return cb(null, true);
+        cb(new Error('Tipo de archivo no permitido'));
+    }
+});
+
+// Endpoint para subir audio (push-to-talk)
+app.post('/api/audio/upload', authenticateRequest, upload.single('audio'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Archivo de audio requerido' });
+        }
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({ url: fileUrl, size: req.file.size, mimetype: req.file.mimetype });
+    } catch (error) {
+        console.error('Error subiendo audio:', error);
+        res.status(500).json({ error: 'Error subiendo audio' });
+    }
+});
+
 // Endpoint seguro para obtener configuración
 app.get('/api/config', authenticateRequest, (req, res) => {
     try {
         // Solo devolver configuración no sensible
+        const prompts = getPrompts();
         res.json({
             openaiModel: process.env.CHATBOT_MODEL || 'gpt-4',
             maxTokens: process.env.CHATBOT_MAX_TOKENS || 1000,
             temperature: process.env.CHATBOT_TEMPERATURE || 0.7,
             audioEnabled: process.env.AUDIO_ENABLED === 'true',
-            audioVolume: process.env.AUDIO_VOLUME || 0.7
+            audioVolume: process.env.AUDIO_VOLUME || 0.7,
+            prompts
         });
     } catch (error) {
         console.error('Error obteniendo configuración:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Endpoint seguro para obtener los prompts actuales
+app.get('/api/prompts', authenticateRequest, (req, res) => {
+    try {
+        const prompts = getPrompts();
+        res.json(prompts);
+    } catch (error) {
+        console.error('Error obteniendo prompts:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
@@ -90,6 +171,12 @@ app.post('/api/openai', authenticateRequest, async (req, res) => {
             return res.status(400).json({ error: 'Prompt requerido' });
         }
 
+        const { combined, examples } = getPrompts();
+        const systemContent = (
+            (combined || `Eres un asistente educativo en español.`) +
+            (context ? `\n\nContexto adicional (BD/UI):\n${context}` : '')
+        ).trim();
+
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -101,10 +188,9 @@ app.post('/api/openai', authenticateRequest, async (req, res) => {
                 messages: [
                     {
                         role: 'system',
-                        content: `Eres un asistente educativo especializado en inteligencia artificial. 
-                        Responde en español de manera clara, amigable y educativa. 
-                        Contexto adicional: ${context || ''}`
+                        content: systemContent
                     },
+                    ...(examples ? [{ role: 'system', content: `Ejemplos de estilo:\n\n${examples.substring(0, 4000)}` }] : []),
                     {
                         role: 'user',
                         content: prompt

@@ -28,10 +28,21 @@
         </div>
 
         <div class="chat-input">
-            <div class="input-container">
+            <div class="input-container" id="inputContainer">
+                <button id="audioToggle" class="audio-toggle" aria-label="Activar/Desactivar audio" title="Audio">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/>
+                        <path d="M14 10a4 4 0 010 4M14 6a8 8 0 010 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
                 <input type="text" id="messageInput" placeholder="Escribe tu mensaje..." maxlength="500">
-                <button id="sendButton" class="send-button" aria-label="Enviar">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <button id="actionButton" class="action-button" aria-label="Hablar" title="Hablar / Enviar">
+                    <svg class="mic-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3z" fill="currentColor"/>
+                        <path d="M5 11a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <svg class="send-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
                     </svg>
                 </button>

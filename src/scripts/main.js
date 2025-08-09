@@ -30,13 +30,19 @@ let chatState = {
     audioEnabled: true,
     userName: '',
     currentState: 'start',
-    dbConnection: null
+    dbConnection: null,
+    // Token para cancelar escritura simulada en curso
+    typingToken: 0,
+    // Referencia a audio en reproducción (bienvenida u otros)
+    currentAudio: null
 };
 
 // Elementos del DOM
 const chatMessages = document.getElementById('chatMessages');
 const messageInput = document.getElementById('messageInput');
-const sendButton = document.getElementById('sendButton');
+const actionButton = document.getElementById('actionButton');
+const audioToggle = document.getElementById('audioToggle');
+const inputContainer = document.getElementById('inputContainer');
 
 // HTML helpers para avatares estilo Messenger
 function getBotAvatarHTML() {
@@ -60,11 +66,18 @@ function getUserAvatarHTML() {
 document.addEventListener('DOMContentLoaded', function() {
     initializeSecurity();
     initializeAudio();
+    loadAudioPreference();
     initializeDatabase();
     playChatOpenAnimation().then(() => {
         initializeChat();
     });
     setupEventListeners();
+    // Sincronizar estado inicial del botón de acción
+    if (messageInput.value.trim().length > 0) {
+        inputContainer.classList.add('input-has-text');
+    } else {
+        inputContainer.classList.remove('input-has-text');
+    }
 });
 
 // Animación de apertura del contenedor de chat
@@ -140,6 +153,18 @@ function initializeAudio() {
     }
 }
 
+// Cargar preferencia de audio tempranamente para que afecte la bienvenida
+function loadAudioPreference() {
+    try {
+        const saved = localStorage.getItem('chat_audio_enabled');
+        if (saved !== null) {
+            const enabled = JSON.parse(saved);
+            chatState.audioEnabled = !!enabled;
+            if (!enabled && audioToggle) audioToggle.classList.add('muted');
+        }
+    } catch(_) {}
+}
+
 // Inicializar conexión a base de datos
 async function initializeDatabase() {
     try {
@@ -196,7 +221,7 @@ function playWelcomeSpeech() {
         utterance.lang = 'es-ES';
         utterance.rate = 0.85;
         utterance.pitch = 1.0;
-        utterance.volume = CHATBOT_CONFIG.welcomeAudio.volume;
+        utterance.volume = chatState.audioEnabled ? CHATBOT_CONFIG.welcomeAudio.volume : 0;
         
         const voices = speechSynthesis.getVoices();
         const spanishVoice = voices.find(voice => voice.lang.includes('es'));
@@ -204,6 +229,9 @@ function playWelcomeSpeech() {
             utterance.voice = spanishVoice;
         }
         
+        // Guardar referencia para poder cancelar o silenciar dinámicamente
+        chatState.currentAudio = utterance;
+        speechSynthesis.cancel(); // asegurar que no haya colas
         speechSynthesis.speak(utterance);
         console.log('Audio de bienvenida reproducido con Web Speech API');
     } catch (error) {
@@ -216,7 +244,8 @@ function playWelcomeSpeech() {
 function playWelcomeAudioFile() {
     try {
         const audio = new Audio(CHATBOT_CONFIG.welcomeAudio.src);
-        audio.volume = CHATBOT_CONFIG.welcomeAudio.volume;
+        audio.volume = chatState.audioEnabled ? CHATBOT_CONFIG.welcomeAudio.volume : 0;
+        chatState.currentAudio = audio;
         
         const playPromise = audio.play();
         
@@ -243,12 +272,207 @@ function setupEventListeners() {
         }
     });
 
-    sendButton.addEventListener('click', sendMessage);
+    // Ya no hay sendButton; se usa actionButton
+
+    // Mostrar botón enviar si hay texto; micrófono si está vacío
+    const updateActionState = () => {
+        if (messageInput.value.trim().length > 0) {
+            inputContainer.classList.add('input-has-text');
+        } else {
+            inputContainer.classList.remove('input-has-text');
+        }
+    };
+    messageInput.addEventListener('input', updateActionState);
+    messageInput.addEventListener('keyup', updateActionState);
+    messageInput.addEventListener('change', updateActionState);
+
+    // Toggle de audio y persistencia
+    audioToggle.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const newState = toggleAudio();
+        if (!newState) audioToggle.classList.add('muted'); else audioToggle.classList.remove('muted');
+        try { localStorage.setItem('chat_audio_enabled', JSON.stringify(newState)); } catch(_){}
+    });
+
+    // Cargar preferencia de audio (sin forzar toggle de lógica)
+    try {
+        const saved = localStorage.getItem('chat_audio_enabled');
+        if (saved !== null) {
+            const enabled = JSON.parse(saved);
+            chatState.audioEnabled = !!enabled;
+            if (!enabled) audioToggle.classList.add('muted'); else audioToggle.classList.remove('muted');
+        }
+    } catch(_){ }
+
+    // Micrófono: placeholder para reconocimiento de voz
+    // Acción dual: enviar cuando hay texto; grabar voz cuando está vacío
+    actionButton.addEventListener('mousedown', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        // Cancelar cualquier escritura simulada pendiente del bot
+        chatState.typingToken++;
+        hideTypingIndicator();
+        setHeaderTyping(false);
+        chatState.isTyping = false;
+        if (messageInput.value.trim().length === 0) {
+            document.getElementById('inputContainer')?.classList.add('recording');
+            startVoiceInputUI();
+        }
+    });
+
+    actionButton.addEventListener('mouseup', () => {
+        // Si está grabando, detener
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+    });
+
+    actionButton.addEventListener('click', (ev) => {
+        // Con texto: enviar (click estándar)
+        if (messageInput.value.trim().length > 0) {
+            ev.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Forzar primer estado
+    if (messageInput.value.trim().length > 0) {
+        inputContainer.classList.add('input-has-text');
+    } else {
+        inputContainer.classList.remove('input-has-text');
+    }
 
     messageInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
+}
+
+// Reconocimiento de voz básico (si disponible)
+function startVoiceInput() {
+    try {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const rec = new SR();
+        rec.lang = 'es-ES';
+        rec.interimResults = false;
+        rec.maxAlternatives = 1;
+        rec.onresult = (e) => {
+            const text = e.results[0][0].transcript;
+            messageInput.value = text;
+            inputContainer.classList.add('input-has-text');
+            stopVoiceInputUI();
+            document.getElementById('inputContainer')?.classList.remove('recording');
+        };
+        rec.onerror = () => { stopVoiceInputUI(); document.getElementById('inputContainer')?.classList.remove('recording'); };
+        rec.onend = () => { stopVoiceInputUI(); document.getElementById('inputContainer')?.classList.remove('recording'); };
+        rec.start();
+    } catch (err) {
+        console.warn('Reconocimiento de voz no disponible:', err);
+    }
+}
+
+// UI de grabación estilo WhatsApp (simple barra/estado)
+let recordingOverlayEl = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let recProgressTimer = null;
+let recSeconds = 0;
+function startVoiceInputUI() {
+    // Crear overlay visual si no existe
+    if (!recordingOverlayEl) {
+        recordingOverlayEl = document.createElement('div');
+        recordingOverlayEl.className = 'recording-overlay';
+        recordingOverlayEl.innerHTML = `
+            <div class="recording-bar">
+                <div class="recording-pulse"></div>
+                <div class="recording-text">Grabando… Mantén presionado para hablar</div>
+                <div class="recording-timer" id="recordingTimer">0:00</div>
+            </div>
+        `;
+        document.body.appendChild(recordingOverlayEl);
+    }
+    recordingOverlayEl.classList.add('show');
+
+    // Iniciar grabación con MediaRecorder (push-to-talk)
+    startRecording();
+
+    // Timer simple
+    const timerEl = document.getElementById('recordingTimer');
+    recSeconds = 0;
+    recordingOverlayEl.dataset.timer = setInterval(() => {
+        recSeconds += 1;
+        const m = Math.floor(recSeconds / 60);
+        const s = (recSeconds % 60).toString().padStart(2, '0');
+        if (timerEl) timerEl.textContent = `${m}:${s}`;
+    }, 1000);
+
+    // Progreso visual en el anillo del botón
+    const container = document.getElementById('inputContainer');
+    const setProgress = () => {
+        const max = 60; // 60s máx por defecto
+        const progress = Math.min(recSeconds / max, 1);
+        container?.style.setProperty('--rec-progress', `${progress * 100}%`);
+        container?.style.setProperty('--rec-visible', `1`);
+    };
+    recProgressTimer = setInterval(setProgress, 200);
+}
+
+function stopVoiceInputUI() {
+    if (!recordingOverlayEl) return;
+    recordingOverlayEl.classList.remove('show');
+    const t = recordingOverlayEl.dataset.timer;
+    if (t) { clearInterval(t); delete recordingOverlayEl.dataset.timer; }
+    if (recProgressTimer) { clearInterval(recProgressTimer); recProgressTimer = null; }
+    const container = document.getElementById('inputContainer');
+    container?.style.removeProperty('--rec-visible');
+    container?.style.removeProperty('--rec-progress');
+}
+
+// Iniciar grabación con MediaRecorder
+async function startRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+            try {
+                const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+                await uploadAudio(blob);
+            } finally {
+                stopVoiceInputUI();
+                document.getElementById('inputContainer')?.classList.remove('recording');
+                stream.getTracks().forEach(t => t.stop());
+            }
+        };
+        mediaRecorder.start();
+        // Auto-stop a los 60s
+        setTimeout(() => { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop(); }, 60000);
+    } catch (err) {
+        console.warn('No se pudo iniciar grabación:', err);
+        stopVoiceInputUI();
+        document.getElementById('inputContainer')?.classList.remove('recording');
+    }
+}
+
+// Subir audio al backend
+async function uploadAudio(blob) {
+    try {
+        const form = new FormData();
+        form.append('audio', blob, 'voz.webm');
+        const res = await fetch('/api/audio/upload', {
+            method: 'POST',
+            headers: { 'X-API-Key': getApiKey() },
+            body: form
+        });
+        if (!res.ok) throw new Error('Fallo subiendo audio');
+        const data = await res.json();
+        // Puedes mostrar un mensaje en el chat con el enlace del audio o procesarlo
+        addUserMessage('🎙️ Audio enviado');
+    } catch (e) {
+        console.warn('Error subiendo audio:', e);
+    }
 }
 
 // Utilidades de mensajería con escritura simulada
@@ -272,10 +496,18 @@ function computeTypingDelay(text) {
 
 async function sendBotMessage(text, keyboard = null, needsUserInput = false, playAudio = false) {
     const clean = sanitizeBotText(text);
+    // Generar token de escritura y respetarlo para poder cancelar
+    const myToken = ++chatState.typingToken;
     showTypingIndicator();
     setHeaderTyping(true);
     const delay = computeTypingDelay(clean);
     await new Promise(r => setTimeout(r, delay));
+    // Si otro evento (p.ej., clic en enviar) canceló esta escritura, abortar
+    if (myToken !== chatState.typingToken) {
+        hideTypingIndicator();
+        setHeaderTyping(false);
+        return;
+    }
     hideTypingIndicator();
     setHeaderTyping(false);
     // Si el último mensaje es del bot y estamos mostrando opciones, edítalo
@@ -324,6 +556,8 @@ function addBotMessage(text, keyboard = null, needsUserInput = false, playAudio 
 
 // Reemplazar el último mensaje del bot para no saturar el chat
 function replaceLastBotMessage(text, keyboard = null) {
+    // Mantener glosario abierto si está visible
+    const hasGlossary = document.getElementById('glossaryOverlay')?.classList.contains('open');
     const botMessages = Array.from(chatMessages.querySelectorAll('.message.bot-message'))
         .filter(el => !el.classList.contains('typing-indicator'));
     const last = botMessages[botMessages.length - 1];
@@ -399,13 +633,16 @@ function showMainMenu() {
     const keyboard = `
         <div class="inline-keyboard">
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showTopics()">📚 Temas del Curso</button>
+                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('fundamentos')">📚 Temas del Curso</button>
             </div>
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showExercises()">🧠 Ejercicios Prácticos</button>
+                <button class="keyboard-button" onclick="Chatbot.showExercises()">🧠 Ejercicios Prácticos</button>
             </div>
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showHelp()">❓ Ayuda</button>
+                <button class="keyboard-button" onclick="Chatbot.showHelp()">❓ Ayuda</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.showGlossary()">📖 Glosario</button>
             </div>
         </div>
     `;
@@ -433,26 +670,8 @@ async function showWelcomeInstructions() {
 
 // Mostrar temas
 function showTopics() {
-    const keyboard = `
-        <div class="inline-keyboard">
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showTopic('fundamentos')">🤖 Fundamentos de IA</button>
-            </div>
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showTopic('ml')">📊 Machine Learning</button>
-            </div>
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showTopic('deep')">🧠 Deep Learning</button>
-            </div>
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showTopic('aplicaciones')">🎯 Aplicaciones Prácticas</button>
-            </div>
-            ${getBackButton()}
-        </div>
-    `;
-    
-    // Edita el último mensaje para evitar saturación
-    replaceLastBotMessage("📚 TEMAS DISPONIBLES\n\nSelecciona el tema que te interesa:", keyboard);
+    // Saltar directamente al selector de sesiones del tema por defecto
+    showSessionsForTopic('fundamentos');
 }
 
 // Mostrar tema específico
@@ -472,12 +691,12 @@ function showSessionsForTopic(topic) {
     const keyboard = `
         <div class="inline-keyboard">
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="openTopicSession('${topic}', 1)">📘 Sesión 1</button>
-                <button class="keyboard-button" onclick="openTopicSession('${topic}', 2)">📗 Sesión 2</button>
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('${topic}', 1)">📘 Sesión 1</button>
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('${topic}', 2)">📗 Sesión 2</button>
             </div>
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="openTopicSession('${topic}', 3)">📙 Sesión 3</button>
-                <button class="keyboard-button" onclick="openTopicSession('${topic}', 4)">📕 Sesión 4</button>
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('${topic}', 3)">📙 Sesión 3</button>
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('${topic}', 4)">📕 Sesión 4</button>
             </div>
             ${getBackButton()}
         </div>
@@ -499,7 +718,7 @@ function openTopicSession(topic, session) {
     const keyboard = `
         <div class="inline-keyboard">
             <div class="keyboard-row">
-                <button class="keyboard-button" onclick="showSessionsForTopic('${topic}')">⬅️ Volver a Sesiones</button>
+                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('${topic}')">⬅️ Volver a Sesiones</button>
             </div>
             ${getBackButton()}
         </div>
@@ -579,6 +798,109 @@ function showHelp() {
     setTimeout(() => {
         sendBotMessage("📊 HISTORIAL\n\nTodas las conversaciones se guardan automáticamente.", getBackButton(), false, false);
     }, 7500);
+}
+
+// Mostrar glosario
+// Mostrar glosario como panel lateral (no dentro del chat)
+function showGlossary() {
+    // Crear overlay si no existe
+    let overlay = document.getElementById('glossaryOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'glossaryOverlay';
+        overlay.className = 'glossary-overlay';
+        overlay.innerHTML = `
+            <div class="glossary-panel">
+                <div class="glossary-header">
+                    <h3>📖 Glosario de Términos de IA</h3>
+                    <button class="glossary-close" aria-label="Cerrar">×</button>
+                </div>
+                <p class="glossary-subtitle" id="glossarySubtitle">Selecciona una letra para ver los términos disponibles:</p>
+                <div class="glossary-back" id="glossaryBack" style="display:none">
+                    <button class="back-btn" aria-label="Volver al glosario">⬅️ Volver al glosario</button>
+                </div>
+                <div class="alphabet-grid" id="alphabetGrid"></div>
+                <div class="glossary-results" id="glossaryResults">
+                    <div class="glossary-empty">Selecciona una letra</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        // Eventos
+        overlay.querySelector('.glossary-close').addEventListener('click', hideGlossary);
+        overlay.querySelector('#glossaryBack').addEventListener('click', glossaryBackToMenu);
+
+        // Construir alfabeto
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const grid = overlay.querySelector('#alphabetGrid');
+        alphabet.forEach((letter) => {
+            const btn = document.createElement('button');
+            btn.className = 'alpha-btn';
+            btn.textContent = letter;
+            btn.addEventListener('click', () => renderGlossaryLetter(letter));
+            grid.appendChild(btn);
+        });
+    }
+
+    // Animación: mover chat a la izquierda y mostrar panel (ligero escalonado)
+    const container = document.querySelector('.telegram-container');
+    if (container) container.classList.add('shift-left');
+    setTimeout(() => overlay.classList.add('open'), 120);
+}
+
+function hideGlossary() {
+    const overlay = document.getElementById('glossaryOverlay');
+    const container = document.querySelector('.telegram-container');
+    if (overlay) overlay.classList.remove('open');
+    // Retirar el desplazamiento del chat tras un pequeño retraso para que la salida sea más natural
+    setTimeout(() => {
+        if (container) container.classList.remove('shift-left');
+    }, 150);
+}
+
+// Diccionario simple de términos
+const GLOSSARY = {
+    A: [ { term: 'Algoritmo', def: 'Conjunto de reglas o instrucciones para resolver un problema.' } ],
+    B: [ { term: 'Big Data', def: 'Conjuntos de datos muy grandes y complejos.' } ],
+    C: [ { term: 'CNN', def: 'Red neuronal convolucional.' } ],
+    D: [ { term: 'Deep Learning', def: 'Aprendizaje profundo con redes neuronales.' } ],
+    M: [ { term: 'Machine Learning', def: 'Aprendizaje automático de máquinas.' } ],
+    N: [ { term: 'NLP', def: 'Procesamiento de lenguaje natural.' } ]
+};
+
+function renderGlossaryLetter(letter) {
+    const overlay = document.getElementById('glossaryOverlay');
+    if (!overlay) return;
+    const results = overlay.querySelector('#glossaryResults');
+    const grid = overlay.querySelector('#alphabetGrid');
+    const back = overlay.querySelector('#glossaryBack');
+    const subtitle = overlay.querySelector('#glossarySubtitle');
+    if (grid) grid.style.display = 'none';
+    if (back) back.style.display = 'block';
+    if (subtitle) subtitle.textContent = `Términos disponibles — Letra ${letter}`;
+    const entries = GLOSSARY[letter] || [];
+    if (entries.length === 0) {
+        results.innerHTML = `<h4 class=\"glossary-letter\">Letra ${letter}</h4><div class=\"glossary-empty\">No hay términos para la letra ${letter}</div>`;
+        return;
+    }
+    const items = entries
+        .map(e => `<div class="glossary-item"><div class="term">${e.term}</div><div class="def">${e.def}</div></div>`)
+        .join('');
+    results.innerHTML = `<h4 class=\"glossary-letter\">Letra ${letter}</h4>${items}`;
+}
+
+function glossaryBackToMenu() {
+    const overlay = document.getElementById('glossaryOverlay');
+    if (!overlay) return;
+    const grid = overlay.querySelector('#alphabetGrid');
+    const back = overlay.querySelector('#glossaryBack');
+    const results = overlay.querySelector('#glossaryResults');
+    const subtitle = overlay.querySelector('#glossarySubtitle');
+    if (grid) grid.style.display = 'grid';
+    if (back) back.style.display = 'none';
+    if (subtitle) subtitle.textContent = 'Selecciona una letra para ver los términos disponibles:';
+    if (results) results.innerHTML = '<div class="glossary-empty">Selecciona una letra</div>';
 }
 
 // Función para hacer llamadas a OpenAI de forma segura
@@ -790,6 +1112,18 @@ function scrollToBottom() {
 // Controlar audio
 function toggleAudio() {
     chatState.audioEnabled = !chatState.audioEnabled;
+    // Si se desactiva durante una reproducción, detenerla inmediatamente
+    try {
+        if (!chatState.audioEnabled) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            if (chatState.currentAudio && typeof chatState.currentAudio.pause === 'function') {
+                chatState.currentAudio.pause();
+                chatState.currentAudio.currentTime = 0;
+            }
+        }
+    } catch(_) {}
     console.log('Audio ' + (chatState.audioEnabled ? 'activado' : 'desactivado'));
     return chatState.audioEnabled;
 }
@@ -855,5 +1189,8 @@ window.Chatbot = {
     showTopics,
     showTopic,
     showSessionsForTopic,
-    openTopicSession
+    openTopicSession,
+    showExercises,
+    showHelp,
+    showGlossary
 }; 

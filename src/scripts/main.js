@@ -1182,9 +1182,27 @@ async function processUserMessageWithAI(message) {
         // Obtener contexto de la base de datos (si está disponible)
         const dbContext = await getDatabaseContext(message);
         
-        // Construir el prompt con contexto
-        const contextInfo = dbContext.length > 0 ? 
-            `\n\nInformación adicional de la base de datos:\n${JSON.stringify(dbContext, null, 2)}` : '';
+        // Construir contexto de BD de forma más legible
+        let contextInfo = '';
+        if (dbContext.length > 0) {
+            contextInfo = '\n\nInformación relevante de la base de datos:\n';
+            dbContext.forEach(item => {
+                switch (item.source) {
+                    case 'glossary':
+                        contextInfo += `📖 Glosario: ${item.term} - ${item.definition}\n`;
+                        break;
+                    case 'faq':
+                        contextInfo += `❓ FAQ (${item.session_title}): ${item.question} - ${item.answer}\n`;
+                        break;
+                    case 'activity':
+                        contextInfo += `🎯 Actividad (${item.session_title}): ${item.title} - ${item.description || ''}\n`;
+                        break;
+                    case 'question':
+                        contextInfo += `🤔 Pregunta (${item.session_title}): ${item.text}\n`;
+                        break;
+                }
+            });
+        }
         
         // Añadir delimitadores de alcance para reforzar casos de uso
         const scope = `\n\n[ÁMBITO]\n- Responder solo sobre el curso de IA y sus actividades.\n- Si está fuera de alcance, reconducir con 2–4 opciones del temario.`;
@@ -1195,8 +1213,30 @@ async function processUserMessageWithAI(message) {
         return aiResponse;
     } catch (error) {
         console.error('Error procesando mensaje con IA:', error);
-        // Devolver mensaje de error específico en lugar de fallback genérico
-        return `⚠️ Error conectando con el asistente: ${error.message}\n\nPor favor, revisa la configuración o inténtalo más tarde. Si el problema persiste, verifica las variables de entorno del servidor.`;
+        
+        console.error('❌ Error completo:', error);
+        
+        // Mostrar detalles del error en consola para debugging
+        if (error.response) {
+            try {
+                const errorData = await error.response.json();
+                console.error('📋 Error details:', errorData);
+            } catch (e) {
+                console.error('📋 Error text:', await error.response.text());
+            }
+        }
+        
+        // Mensaje de error más útil
+        return `⚠️ Hubo un problema temporal. Reintenta.
+
+Detalles técnicos: ${error.message}
+
+Mientras tanto, puedo ayudarte con:
+- Conceptos básicos de IA (prompt, LLM, token)
+- Diferencias entre modelos
+- Ejemplos prácticos de IA
+
+¿Qué te gustaría aprender?`;
     }
 }
 

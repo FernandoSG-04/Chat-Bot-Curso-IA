@@ -213,6 +213,34 @@ app.post('/api/audio/upload', authenticateRequest, requireUserSession, upload.si
     }
 });
 
+// Endpoint de salud para verificar configuración
+app.get('/api/health', (req, res) => {
+    try {
+        const health = {
+            ok: true,
+            timestamp: new Date().toISOString(),
+            modelEnUso: process.env.CHATBOT_MODEL || 'gpt-4o-mini',
+            nodeVersion: process.version,
+            env: process.env.NODE_ENV || 'development'
+        };
+
+        // Verificar configuración crítica (sin exponer valores)
+        const checks = {
+            openaiConfigured: !!process.env.OPENAI_API_KEY,
+            databaseConfigured: !!process.env.DATABASE_URL,
+            secretsConfigured: !!(process.env.API_SECRET_KEY && process.env.USER_JWT_SECRET)
+        };
+
+        health.checks = checks;
+        health.allGreen = Object.values(checks).every(Boolean);
+
+        res.json(health);
+    } catch (error) {
+        console.error('Error en health check:', error);
+        res.status(500).json({ ok: false, error: 'Health check failed' });
+    }
+});
+
 // Endpoint seguro para obtener configuración
 app.get('/api/config', authenticateRequest, (req, res) => {
     try {
@@ -281,36 +309,86 @@ app.post('/api/openai', authenticateRequest, requireUserSession, async (req, res
         }
 
         const { combined, examples } = getPrompts();
-        const systemContent = (
-            (combined || `Eres un asistente educativo en español especializado en inteligencia artificial.`) +
-            (context ? `\n\nContexto adicional (BD/UI):\n${context}` : '')
-        ).trim();
+        
+        // System prompt robusto con fallback
+        let systemContent = combined || `Eres un asistente educativo especializado en inteligencia artificial. 
 
-        // compatibilidad con Node < 18
-        const fetchImpl = (global.fetch ? global.fetch.bind(global) : (await import('node-fetch')).default);
+Respondes preguntas sobre:
+- Conceptos básicos de IA: prompt, LLM, token, fine-tuning, etc.
+- Diferencias entre modelos (GPT, BERT, transformers)
+- Ejemplos prácticos de IA
+- Fundamentos de machine learning y deep learning
+
+Siempre das respuestas educativas útiles, no genéricas. Si no tienes contexto específico, explicas el concepto básico y sugieres explorar el glosario o FAQ.`;
+
+        // Añadir contexto si existe
+        if (context && context.trim()) {
+            systemContent += `\n\nContexto adicional de la base de datos:\n${context}`;
+        }
+        
+        console.log('📝 System prompt length:', systemContent.length);
+        console.log('🎯 User prompt:', prompt?.substring(0, 100) + '...');
+
+        // Compatibilidad con Node < 18 (usar node-fetch si global.fetch no existe)
+        let fetchImpl;
+        if (typeof fetch !== 'undefined') {
+            fetchImpl = fetch;
+        } else {
+            try {
+                const nodeFetch = await import('node-fetch');
+                fetchImpl = nodeFetch.default;
+            } catch (error) {
+                return res.status(500).json({ 
+                    error: 'Fetch no disponible', 
+                    details: 'Node.js < 18 requiere node-fetch instalado: npm install node-fetch' 
+                });
+            }
+        }
+
+        // Construcción de messages: system + examples (opcional) + user
+        const messages = [
+            {
+                role: 'system',
+                content: systemContent
+            }
+        ];
+
+        // Añadir examples como system message adicional si existe
+        if (examples && examples.trim()) {
+            messages.push({
+                role: 'system',
+                content: `Ejemplos de estilo y formato:\n\n${examples.substring(0, 4000)}`
+            });
+        }
+
+        // Mensaje del usuario (ya incluye [ÁMBITO] y contexto de BD)
+        messages.push({
+            role: 'user',
+            content: prompt
+        });
+
+        const requestBody = {
+            model: process.env.CHATBOT_MODEL || 'gpt-4o-mini',
+            messages: messages,
+            max_tokens: parseInt(process.env.CHATBOT_MAX_TOKENS) || 900,
+            temperature: parseFloat(process.env.CHATBOT_TEMPERATURE) || 0.5,
+            top_p: 0.9
+        };
+
+        console.log('🚀 OpenAI Request:', {
+            model: requestBody.model,
+            messages_count: messages.length,
+            max_tokens: requestBody.max_tokens,
+            temperature: requestBody.temperature
+        });
+
         const response = await fetchImpl('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
             },
-            body: JSON.stringify({
-                model: process.env.CHATBOT_MODEL || 'gpt-4o-mini',
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemContent
-                    },
-                    ...(examples ? [{ role: 'system', content: `Ejemplos de estilo:\n\n${examples.substring(0, 4000)}` }] : []),
-                    {
-                        role: 'user',
-                        content: prompt
-                    }
-                ],
-                max_tokens: parseInt(process.env.CHATBOT_MAX_TOKENS) || 700,
-                temperature: parseFloat(process.env.CHATBOT_TEMPERATURE) || 0.7,
-                top_p: 0.9
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -323,16 +401,31 @@ app.post('/api/openai', authenticateRequest, requireUserSession, async (req, res
         }
 
         const data = await response.json();
+        console.log('📨 OpenAI Response:', {
+            choices_count: data?.choices?.length || 0,
+            usage: data?.usage || 'no usage data',
+            has_content: !!data?.choices?.[0]?.message?.content
+        });
+
         const content = data?.choices?.[0]?.message?.content;
         
-        if (!content) {
-            console.error('Respuesta vacía de OpenAI:', JSON.stringify(data));
-            return res.status(500).json({ 
-                error: 'Respuesta vacía de OpenAI', 
-                details: 'La API no devolvió contenido válido' 
-            });
+        if (!content || content.trim() === '') {
+            console.error('⚠️ Respuesta vacía de OpenAI. Full response:', JSON.stringify(data, null, 2));
+            
+            // Fallback directo si OpenAI no responde
+            const fallbackResponse = `Lo siento, hubo un problema técnico con la respuesta. 
+
+Sin embargo, puedo ayudarte con conceptos básicos de IA. Por ejemplo:
+- **Prompt**: Es la instrucción o pregunta que le das a un modelo de IA
+- **LLM**: Large Language Model, como GPT, que entiende y genera texto
+- **Token**: Unidad básica de texto que procesa el modelo
+
+¿Te gustaría explorar algún tema específico del curso de IA?`;
+            
+            return res.json({ response: fallbackResponse });
         }
 
+        console.log('✅ Respuesta exitosa, longitud:', content.length);
         res.json({ response: content.trim() });
     } catch (error) {
         console.error('Error llamando a OpenAI:', error);
@@ -364,7 +457,7 @@ app.post('/api/database', authenticateRequest, requireUserSession, async (req, r
     }
 });
 
-// Endpoint para obtener contexto de la base de datos
+// Endpoint para obtener contexto de la base de datos con consultas optimizadas
 app.post('/api/context', authenticateRequest, requireUserSession, async (req, res) => {
     try {
         if (!pool) {
@@ -373,25 +466,150 @@ app.post('/api/context', authenticateRequest, requireUserSession, async (req, re
 
         const { userQuestion } = req.body;
         
-        if (!userQuestion) {
-            return res.json({ data: [] });
+        if (!userQuestion || typeof userQuestion !== 'string') {
+            return res.status(400).json({ error: 'userQuestion requerido como string' });
         }
 
-        const query = `
-            SELECT * FROM course_content 
-            WHERE content_type IN ('topic', 'exercise', 'concept')
-            AND (content ILIKE $1 OR tags @> $2)
-            ORDER BY difficulty_level
-            LIMIT 5
-        `;
+        // Normalizar la pregunta del usuario para búsqueda
+        const searchTerm = `%${userQuestion.toLowerCase().trim()}%`;
         
-        const result = await pool.query(query, [`%${userQuestion}%`, [userQuestion.toLowerCase()]]);
-        res.json({ data: result.rows });
+        // Query combinada para obtener contexto relevante de múltiples tablas
+        const contextQuery = `
+            -- Términos del glosario que coinciden
+            SELECT 
+                'glossary' as source,
+                g.id,
+                null as session_id,
+                null as session_title,
+                g.term,
+                g.definition,
+                null as question,
+                null as answer,
+                null as title,
+                null as description,
+                null as text,
+                length(g.term) as relevance_score
+            FROM public.glossary_term g
+            WHERE LOWER(g.term) ILIKE $1 
+               OR LOWER(g.definition) ILIKE $1
+            
+            UNION ALL
+            
+            -- FAQs de sesiones
+            SELECT 
+                'faq' as source,
+                f.id,
+                f.session_id,
+                cs.title as session_title,
+                null as term,
+                null as definition,
+                f.question,
+                f.answer,
+                null as title,
+                null as description,
+                null as text,
+                length(f.question) + length(f.answer) as relevance_score
+            FROM public.session_faq f
+            JOIN public.course_session cs ON f.session_id = cs.id
+            WHERE LOWER(f.question) ILIKE $1 
+               OR LOWER(f.answer) ILIKE $1
+            
+            UNION ALL
+            
+            -- Actividades de sesiones
+            SELECT 
+                'activity' as source,
+                a.id,
+                a.session_id,
+                cs.title as session_title,
+                null as term,
+                null as definition,
+                null as question,
+                null as answer,
+                a.title,
+                a.description,
+                null as text,
+                length(a.title) + COALESCE(length(a.description), 0) as relevance_score
+            FROM public.session_activity a
+            JOIN public.course_session cs ON a.session_id = cs.id
+            WHERE LOWER(a.title) ILIKE $1 
+               OR LOWER(a.description) ILIKE $1
+            
+            UNION ALL
+            
+            -- Preguntas de sesiones
+            SELECT 
+                'question' as source,
+                q.id,
+                q.session_id,
+                cs.title as session_title,
+                null as term,
+                null as definition,
+                null as question,
+                null as answer,
+                null as title,
+                null as description,
+                q.text,
+                length(q.text) as relevance_score
+            FROM public.session_question q
+            JOIN public.course_session cs ON q.session_id = cs.id
+            WHERE LOWER(q.text) ILIKE $1
+            
+            ORDER BY relevance_score DESC, source
+            LIMIT 8
+        `;
+
+        const result = await pool.query(contextQuery, [searchTerm]);
+        
+        // Formatear los resultados según el tipo
+        const formattedData = result.rows.map(row => {
+            const base = {
+                source: row.source,
+                id: row.id,
+                session_id: row.session_id,
+                session_title: row.session_title
+            };
+
+            switch (row.source) {
+                case 'glossary':
+                    return {
+                        ...base,
+                        term: row.term,
+                        definition: row.definition
+                    };
+                case 'faq':
+                    return {
+                        ...base,
+                        question: row.question,
+                        answer: row.answer
+                    };
+                case 'activity':
+                    return {
+                        ...base,
+                        title: row.title,
+                        description: row.description
+                    };
+                case 'question':
+                    return {
+                        ...base,
+                        text: row.text
+                    };
+                default:
+                    return base;
+            }
+        });
+
+        res.json({ data: formattedData });
     } catch (error) {
-        console.error('Error obteniendo contexto:', error);
-        res.json({ data: [] });
+        console.error('Error consultando contexto de BD:', error);
+        res.status(500).json({ 
+            error: 'Error consultando contexto', 
+            details: error.message 
+        });
     }
 });
+
+// Función para obtener prompts del sistema
 
 // Middleware de manejo de errores
 app.use((error, req, res, next) => {

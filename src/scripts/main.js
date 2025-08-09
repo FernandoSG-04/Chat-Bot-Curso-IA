@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAudioPreference();
     initializeDatabase();
     playChatOpenAnimation().then(() => {
-        initializeChat();
+    initializeChat();
     });
     setupEventListeners();
     // Sincronizar estado inicial del botón de acción

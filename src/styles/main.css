@@ -405,7 +405,7 @@ body:not(.landing) {
         radial-gradient(1000px 700px at 85% 10%, rgba(68, 229, 255, 0.06), transparent 60%),
         radial-gradient(900px 600px at 10% 90%, rgba(0, 119, 166, 0.06), transparent 60%),
         linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.0)),
-        var(--glass-strong);
+        rgba(10,10,10,0.8);
     scroll-behavior: smooth;
     position: relative;
     z-index: 0;
@@ -481,9 +481,9 @@ body:not(.landing) {
 .user-message .message-bubble { order: 1; }
 
 .bot-message .message-bubble {
-    background: rgba(11, 29, 56, 0.85);
+    background: rgba(10, 10, 10, 0.85); /* Carbón Digital translucido para unificar */
     color: var(--text-on-dark);
-    border: 1px solid rgba(68, 229, 255, 0.20);
+    border: 1px solid rgba(68, 229, 255, 0.20); /* Turquesa IA */
     border-bottom-left-radius: 4px;
     animation: popInLeft 0.35s ease both;
 }
@@ -495,6 +495,7 @@ body:not(.landing) {
     border-bottom-right-radius: 4px;
     background-size: 200% 200%;
     animation: popInRight 0.35s ease both, gradientShift 12s ease infinite;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25), 0 0 0 1px rgba(68,229,255,0.08) inset;
 }
 
 /* Hover/Lift e iluminación sutil en mensajes (solo en dispositivos con cursor) */
@@ -856,7 +857,7 @@ body:not(.landing) {
 .keyboard-button {
     flex: 1;
     padding: 10px 12px;
-    background: transparent;
+    background: rgba(10,10,10,0.85);
     border: 1.5px solid var(--color-primary);
     border-radius: 12px;
     color: var(--color-primary);

@@ -350,11 +350,8 @@
         function initChat() {
             addBotMessage("¡Hola! 👋 Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.");
             
-            setTimeout(() => {
-                if (!userName) {
-                    addBotMessage("Para comenzar, por favor proporciona tu nombre y apellido:", null, true);
-                }
-            }, 1500);
+            // Ya no se solicita nombre/apellido; continuar sin bloqueo
+            setTimeout(() => {}, 500);
         }
 
         // Agregar mensaje del bot
@@ -739,19 +736,7 @@
 
         // Procesar mensaje del usuario
         function handleUserMessage(message) {
-            if (!userName && currentState === 'start') {
-                // Primer mensaje es el nombre del usuario
-                if (message.split(' ').length >= 2) {
-                    userName = message;
-                    addBotMessage(`¡Excelente, ${userName}! 👏\n\nTu identidad ha sido registrada correctamente.`);
-                    
-                    setTimeout(() => {
-                        showMainMenu();
-                    }, 1500);
-                } else {
-                    addBotMessage("⚠️ Por favor proporciona tu nombre y apellido completos.", null, true);
-                }
-            } else if (currentState === 'answering') {
+            if (currentState === 'answering') {
                 // Usuario está respondiendo preguntas
                 userAnswers.push({
                     question: currentQuestionIndex,

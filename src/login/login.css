@@ -1,17 +1,52 @@
+/* Importación de fuentes según PROMPT_CLAUDE.md */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Inter:wght@400;500&display=swap');
+
 :root {
-    /* Paleta nueva */
-    --color-primary: #44E5FF;      /* Turquesa IA */
-    --color-secondary: #0077A6;    /* Azul Profundo */
-    --color-accent: #44E5FF;
-    --color-bg-1: #0A0A0A;         /* Carbón Digital */
-    --color-bg-2: #0A0A0A;
-    --color-surface: #0A0A0A;
-    --text-on-dark: #FFFFFF;       /* Blanco Puro */
-    --text-muted: #F2F2F2;         /* Gris Neblina */
+    /* Paleta oficial según PROMPT_CLAUDE.md */
+    --color-primary: #44E5FF;        /* Turquesa IA - CTA, iconos, links */
+    --color-bg-dark: #0A0A0A;        /* Carbón Digital - fondos, headers, texto de titulares */
+    --color-bg-light: #F2F2F2;       /* Gris Neblina - secciones de respiro, superficies claras */
+    --color-contrast: #FFFFFF;       /* Blanco Puro - texto sobre oscuro, tarjetas */
+    --color-accent: #0077A6;         /* Azul Profundo - hover de links, badges, estados activos */
+    
+    /* Variables adicionales para compatibilidad */
+    --color-secondary: #0077A6;      /* Azul Profundo (alias de accent) */
+    --color-bg-1: #0A0A0A;          /* Carbón Digital (alias) */
+    --color-bg-2: #0A0A0A;          /* Fondo uniforme oscuro */
+    --color-surface: #0A0A0A;       /* Superficie base */
+    --text-on-dark: #FFFFFF;        /* Blanco Puro (alias de contrast) */
+    --text-muted: #F2F2F2;          /* Gris Neblina (alias de bg-light) */
     --glass: rgba(10, 10, 10, 0.6);
     --glass-strong: rgba(10, 10, 10, 0.8);
+
+    /* Tipografías según PROMPT_CLAUDE.md */
     --font-heading: 'Montserrat', Arial, Helvetica, sans-serif;
     --font-body: 'Inter', Arial, Helvetica, sans-serif;
+    --heading-weight: 800;           /* ExtraBold para H1-H2 */
+    --body-weight: 400;              /* Regular */
+    --body-weight-medium: 500;       /* Medium */
+    
+    /* Jerarquía tipográfica sugerida */
+    --font-size-h1: 32px;           /* H1 28-32px */
+    --font-size-h2: 24px;           /* H2 22-24px */
+    --font-size-base: 16px;         /* cuerpo 14-16px */
+    --font-size-sm: 14px;
+    --font-size-lg: 18px;
+    --line-height: 1.5;             /* interlineado 1.5 */
+
+    /* Tokens de diseño según PROMPT_CLAUDE.md */
+    --radius-md: 12px;              /* radios 12-16px */
+    --radius-lg: 16px;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,.12);  /* sombra sutil */
+    
+    /* Espaciado sugerido */
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    
+    /* Bordes para fondos oscuros */
+    --border-light: 1px solid rgba(255,255,255,.08);
 }
 
 * {
@@ -74,8 +109,8 @@ body {
     background: var(--glass);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(68,229,255,0.18);
-    border-radius: 20px;
-    padding: 40px;
+    border-radius: calc(var(--radius-lg) + 4px); /* 20px */
+    padding: calc(var(--spacing-lg) + var(--spacing-md)); /* 40px */
     width: 100%;
     max-width: 400px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(68,229,255,0.06) inset;
@@ -93,12 +128,12 @@ body {
 
 .back-link {
     display: inline-block;
-    padding: 6px 10px;
-    border-radius: 8px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--spacing-xs);
     border: 1px solid rgba(4, 194, 209, 0.35);
     color: var(--text-on-dark);
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: var(--font-size-sm);
     transition: all 0.2s ease;
     background: rgba(255,255,255,0.04);
 }
@@ -235,14 +270,15 @@ body {
 
 .input-box input {
     width: 100%;
-    padding: 15px 45px 15px 20px;
+    padding: var(--spacing-md) 45px var(--spacing-md) var(--spacing-md);
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(68,229,255,0.18);
     border-radius: 25px;
     color: var(--text-on-dark);
-    font-size: 1rem;
+    font-size: var(--font-size-base);
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
+    font-family: var(--font-body);
 }
 
 .input-box input::placeholder {
@@ -354,13 +390,14 @@ body {
 /* Botón */
 .btn {
     width: 100%;
-    padding: 15px;
+    padding: var(--spacing-md);
     background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
     border: none;
     border-radius: 25px;
     color: var(--color-bg-1);
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: var(--font-size-base);
+    font-weight: var(--body-weight-medium);
+    font-family: var(--font-body);
     cursor: pointer;
     position: relative;
     overflow: hidden;
@@ -519,5 +556,60 @@ body {
     
     .login-form h2 {
         font-size: 1.5rem;
+    }
+}
+
+/* ====== Características de Accesibilidad (WCAG AA) ====== */
+
+/* Soporte para prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    /* Deshabilitar animaciones específicas */
+    .particle,
+    .wrapper,
+    .logo-container,
+    .login-form,
+    .btn {
+        animation: none !important;
+    }
+}
+
+/* Foco visible mejorado para todos los elementos interactivos */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible,
+.btn:focus-visible,
+.back-link:focus-visible,
+.forgot-link:focus-visible,
+.register-link-text:focus-visible,
+.toggle-password:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(68, 229, 255, 0.25);
+}
+
+/* Soporte para usuarios con alto contraste */
+@media (prefers-contrast: high) {
+    :root {
+        --color-primary: #00FFFF;     /* Cyan más brillante */
+        --color-accent: #0099CC;      /* Azul más saturado */
+        --text-muted: #FFFFFF;        /* Texto completamente blanco */
+    }
+    
+    /* Bordes más visibles */
+    .wrapper,
+    .input-box input,
+    .btn,
+    .checkmark {
+        border-width: 2px;
     }
 }

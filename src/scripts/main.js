@@ -197,9 +197,7 @@ function initializeChat() {
 
         await sendBotMessage(greeting, null, false, true);
         await showWelcomeInstructions();
-        if (!chatState.userName) {
-            await sendBotMessage("Para comenzar, por favor proporciona tu nombre y apellido:", null, true, false);
-        }
+        // No exigir nombre/apellido al inicio; pasar directo al menú
     })();
 }
 
@@ -1206,7 +1204,8 @@ async function processUserMessageWithAI(message) {
         
         // Añadir delimitadores de alcance para reforzar casos de uso
         const scope = `\n\n[ÁMBITO]\n- Responder solo sobre el curso de IA y sus actividades.\n- Si está fuera de alcance, reconducir con 2–4 opciones del temario.`;
-        const fullPrompt = `Usuario: ${message}${contextInfo}${scope}\n\nResponde de manera educativa y útil en español.`;
+        const behavior = `\n\n[COMPORTAMIENTO]\n- Detecta el ánimo del usuario (entusiasta|neutral|confundido|frustrado|molesto|troll). Ajusta tono: profesional y cercano; si es troll/pregunta trivial, usa una línea de sarcasmo ligero relacionado al curso sin faltar el respeto.\n- Si la pregunta es ambigua, pide 1–2 aclaraciones o asume supuestos explícitos.\n- Si es compleja, divide en secciones con pasos y termina con mini‑conclusión.\n- Incluye 3–5 casos de uso cuando aplique (propósito, pasos, métrica, riesgo) y 2–4 prompts listos para copiar si ayudan.\n- Formato: 1 línea de respuesta directa + 3–6 viñetas con **negritas** + cierre con pregunta breve.\n- Nunca pidas nombre/apellido ni bloquees el flujo.`;
+        const fullPrompt = `Usuario: ${message}${contextInfo}${scope}${behavior}\n\nResponde de manera educativa, clara y útil en español.`;
         
         // Llamar a OpenAI
         const aiResponse = await callOpenAI(fullPrompt, contextInfo);
@@ -1260,18 +1259,12 @@ function sendMessage() {
 
 // Procesar mensaje del usuario
 async function handleUserMessage(message) {
-    if (!chatState.userName && chatState.currentState === 'start') {
-        // Primer mensaje es el nombre del usuario
-        if (message.split(' ').length >= 2) {
-            chatState.userName = message;
-            await sendBotMessage(`¡Excelente, ${chatState.userName}! 👏\n\nTu identidad ha sido registrada correctamente.`, null, false, false);
-            
-            setTimeout(() => {
-                showMainMenu();
-            }, 1500);
-        } else {
-            await sendBotMessage("⚠️ Por favor proporciona tu nombre y apellido completos.", null, true, false);
-        }
+    if (chatState.currentState === 'start' && !chatState.userName) {
+        // Ya no se requiere capturar nombre; ir directo al procesamiento IA
+        chatState.currentState = 'main_menu';
+        showMainMenu();
+        const response = await processUserMessageWithAI(message);
+        await sendBotMessage(response, null, false, false);
     } else {
         // Procesar otros mensajes con IA
         const response = await processUserMessageWithAI(message);

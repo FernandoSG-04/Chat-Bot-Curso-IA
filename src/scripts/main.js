@@ -120,6 +120,7 @@ async function initializeSecurity() {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': getApiKey(),
+                ...getUserAuthHeaders(),
                 'X-Requested-With': 'XMLHttpRequest'
             },
             credentials: 'same-origin'
@@ -911,6 +912,7 @@ async function callOpenAI(prompt, context = '') {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': getApiKey(),
+                ...getUserAuthHeaders(),
                 'X-Requested-With': 'XMLHttpRequest'
             },
             credentials: 'same-origin',
@@ -937,6 +939,7 @@ async function queryDatabase(query, params = []) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': getApiKey(),
+                ...getUserAuthHeaders(),
                 'X-Requested-With': 'XMLHttpRequest'
             },
             credentials: 'same-origin',
@@ -963,6 +966,7 @@ async function getDatabaseContext(userQuestion) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': getApiKey(),
+                ...getUserAuthHeaders(),
                 'X-Requested-With': 'XMLHttpRequest'
             },
             credentials: 'same-origin',
@@ -995,6 +999,18 @@ function generateSessionKey() {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2);
     return btoa(`${timestamp}-${random}`).replace(/[^a-zA-Z0-9]/g, '');
+}
+
+// Encabezados de autenticación de usuario
+function getUserAuthHeaders() {
+    try {
+        const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
+        const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
+        if (token && userId) {
+            return { 'Authorization': `Bearer ${token}`, 'X-User-Id': userId };
+        }
+    } catch (_) {}
+    return {};
 }
 
 // Procesar mensaje del usuario con IA

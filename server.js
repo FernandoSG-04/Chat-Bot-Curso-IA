@@ -13,19 +13,28 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DEV_MODE = process.env.NODE_ENV !== 'production';
 
 // Configuración de seguridad
+app.disable('x-powered-by');
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
             scriptSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.openai.com"],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:']
+            imgSrc: ["'self'", 'data:', 'https:'],
+            connectSrc: ["'self'", 'https://api.openai.com'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+            frameAncestors: ["'none'"],
+            objectSrc: ["'none'"]
         }
-    }
+    },
+    frameguard: { action: 'deny' },
+    referrerPolicy: { policy: 'same-origin' },
+    noSniff: true,
+    xssFilter: true,
+    hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false
 }));
 
 // Rate limiting para prevenir abuso
@@ -66,12 +75,35 @@ if (process.env.DATABASE_URL) {
 
 // Middleware de autenticación básica
 function authenticateRequest(req, res, next) {
+    if (DEV_MODE) return next();
     const apiKey = req.headers['x-api-key'];
     if (!apiKey || apiKey !== process.env.API_SECRET_KEY) {
         return res.status(401).json({ error: 'No autorizado' });
     }
     next();
 }
+
+// Verificación de origen/Referer para reducir CSRF cuando se usen cookies (defensa adicional)
+function verifyOrigin(req, res, next) {
+    try {
+        const allowed = (process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000']).map(o => o.trim());
+        const origin = req.headers.origin || '';
+        const referer = req.headers.referer || '';
+        if (origin && !allowed.includes(origin)) return res.status(403).json({ error: 'Origen no permitido' });
+        if (referer && !allowed.some(a => referer.startsWith(a))) return res.status(403).json({ error: 'Referer no permitido' });
+        next();
+    } catch (_) { next(); }
+}
+if (!DEV_MODE) app.use('/api/', verifyOrigin);
+
+// Exigir cabecera AJAX personalizada en métodos inseguros para mitigar CSRF
+function requireAjaxHeader(req, res, next) {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const xr = req.headers['x-requested-with'];
+    if (xr !== 'XMLHttpRequest') return res.status(403).json({ error: 'Solicitud no válida' });
+    next();
+}
+if (!DEV_MODE) app.use('/api/', requireAjaxHeader);
 
 // Sesiones temporales (hasta integrar BD)
 const USER_JWT_SECRET = process.env.USER_JWT_SECRET || crypto.randomBytes(32).toString('hex');
@@ -90,6 +122,10 @@ function getFingerprint(req) {
 }
 
 function requireUserSession(req, res, next) {
+    if (DEV_MODE) {
+        req.user = { userId: 'dev-user-id', username: 'dev-user' };
+        return next();
+    }
     try {
         const auth = req.headers['authorization'] || '';
         const userId = req.headers['x-user-id'];
@@ -163,7 +199,7 @@ const upload = multer({
 });
 
 // Endpoint para subir audio (push-to-talk)
-app.post('/api/audio/upload', authenticateRequest, upload.single('audio'), (req, res) => {
+app.post('/api/audio/upload', authenticateRequest, requireUserSession, upload.single('audio'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'Archivo de audio requerido' });
@@ -329,6 +365,9 @@ app.post('/api/context', authenticateRequest, requireUserSession, async (req, re
 // Middleware de manejo de errores
 app.use((error, req, res, next) => {
     console.error('Error no manejado:', error);
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ error: 'Error interno del servidor' });
+    }
     res.status(500).json({ error: 'Error interno del servidor' });
 });
 

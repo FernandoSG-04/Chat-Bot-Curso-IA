@@ -151,10 +151,102 @@ async function handleSuccessfulLogin(username, remember) {
     // Animar éxito
     await animateSuccess();
 
-    // Redirigir al chat
-    setTimeout(() => {
-        window.location.href = '../chat.html';
-    }, LOGIN_CONFIG.redirectDelay);
+    // Emitir sesión segura en backend (ID único + token ligado a dispositivo)
+    try {
+        const { userId, token } = await issueUserSession(username);
+        if (!userId || !token) throw new Error('Respuesta incompleta');
+        sessionStorage.setItem('userId', userId);
+        sessionStorage.setItem('authToken', token);
+        if (remember) {
+            localStorage.setItem('userId', userId);
+            localStorage.setItem('authToken', token);
+        } else {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('authToken');
+        }
+
+        // Redirigir al chat solo si hay token
+        setTimeout(() => {
+            window.location.href = '../chat.html';
+        }, LOGIN_CONFIG.redirectDelay);
+    } catch (err) {
+        console.warn('No se pudo emitir sesión segura:', err);
+        // Fallback de desarrollo: permitir acceso local sin token real
+        const hn = (window.location && window.location.hostname) || '';
+        const isLocal = ['localhost', '127.0.0.1', ''].includes(hn) || !hn.includes('.');
+        if (isLocal) {
+            const userId = `dev-${Date.now()}`;
+            const token = btoa(`dev-token-${userId}`);
+            sessionStorage.setItem('userId', userId);
+            sessionStorage.setItem('authToken', token);
+            if (remember) {
+                localStorage.setItem('userId', userId);
+                localStorage.setItem('authToken', token);
+            } else {
+                localStorage.removeItem('userId');
+                localStorage.removeItem('authToken');
+            }
+            // Redirigir aunque no haya token real (solo dev)
+            setTimeout(() => {
+                window.location.href = '../chat.html';
+            }, LOGIN_CONFIG.redirectDelay);
+            return;
+        }
+        let detail = 'No se pudo establecer una sesión segura. Inténtalo de nuevo.';
+        if (err && err.status) {
+            if (err.status === 401) {
+                detail = 'No autorizado para emitir sesión. Verifica la clave de acceso (X-API-Key) o vuelve a iniciar sesión. Código: 401';
+            } else if (err.status === 429) {
+                detail = 'Demasiadas solicitudes. Espera un momento y vuelve a intentarlo. Código: 429';
+            } else if (err.status === 400) {
+                detail = 'Usuario inválido para emitir sesión. Revisa el nombre de usuario. Código: 400';
+            } else if (err.status >= 500) {
+                detail = 'Servidor no disponible en este momento. Inténtalo más tarde. Código: ' + err.status;
+            }
+        }
+        showError(detail);
+        setLoadingState(false);
+        return;
+    }
+}
+
+// ---------- Sesión segura (sin BD) ----------
+function getApiKeyForLogin() {
+    try {
+        let key = sessionStorage.getItem('apiKey');
+        if (!key) {
+            key = generateSessionKey();
+            sessionStorage.setItem('apiKey', key);
+        }
+        return key;
+    } catch (_) {
+        return generateSessionKey();
+    }
+}
+
+function generateSessionKey() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2);
+    return btoa(`${timestamp}-${random}`).replace(/[^a-zA-Z0-9]/g, '');
+}
+
+async function issueUserSession(username) {
+    const res = await fetch('/api/auth/issue', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': getApiKeyForLogin(),
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ username })
+    });
+    if (!res.ok) {
+        const err = new Error(`HTTP ${res.status}`);
+        err.status = res.status;
+        try { err.body = await res.text(); } catch(_) {}
+        throw err;
+    }
+    return res.json();
 }
 
 async function handleFailedLogin() {

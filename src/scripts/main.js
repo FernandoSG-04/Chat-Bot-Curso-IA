@@ -1,6 +1,6 @@
 // Configuración del chatbot
 const CHATBOT_CONFIG = {
-    name: 'Asistente Educativo',
+    name: 'Asistente de Aprende y Aplica IA',
     typingSpeed: 50,
     responseDelay: 1000,
     audioEnabled: true,

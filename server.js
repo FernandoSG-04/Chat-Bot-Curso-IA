@@ -7,6 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 require('dotenv').config();
 
 const app = express();
@@ -69,6 +71,48 @@ function authenticateRequest(req, res, next) {
         return res.status(401).json({ error: 'No autorizado' });
     }
     next();
+}
+
+// Sesiones temporales (hasta integrar BD)
+const USER_JWT_SECRET = process.env.USER_JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días
+const sessions = new Map(); // userId -> { username, fp, exp }
+
+function getFingerprint(req) {
+    try {
+        const ua = req.headers['user-agent'] || '';
+        const lang = req.headers['accept-language'] || '';
+        const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || '';
+        return crypto.createHash('sha256').update(`${ua}|${lang}|${ip}`).digest('hex');
+    } catch (_) {
+        return '';
+    }
+}
+
+function requireUserSession(req, res, next) {
+    try {
+        const auth = req.headers['authorization'] || '';
+        const userId = req.headers['x-user-id'];
+        if (!auth.startsWith('Bearer ') || !userId) {
+            return res.status(401).json({ error: 'Sesión requerida' });
+        }
+        const token = auth.slice(7);
+        const payload = jwt.verify(token, USER_JWT_SECRET);
+        if (payload.sub !== userId) return res.status(401).json({ error: 'Token inválido' });
+        const fpNow = getFingerprint(req);
+        if (payload.fp && payload.fp !== fpNow) return res.status(401).json({ error: 'Dispositivo no autorizado' });
+        const s = sessions.get(userId);
+        if (!s || s.username !== payload.username || s.fp !== fpNow || s.exp < Date.now()) {
+            return res.status(401).json({ error: 'Sesión expirada o inválida' });
+        }
+        // renovar TTL (deslizante)
+        s.exp = Date.now() + SESSION_TTL_MS;
+        sessions.set(userId, s);
+        req.user = { userId, username: payload.username };
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Sesión inválida' });
+    }
 }
 
 // Utilidades para cargar prompts de /prompts
@@ -162,8 +206,27 @@ app.get('/api/prompts', authenticateRequest, (req, res) => {
     }
 });
 
+// Emitir userId único + token (sin BD). El token está ligado a fingerprint del dispositivo
+app.post('/api/auth/issue', authenticateRequest, (req, res) => {
+    try {
+        const { username } = req.body || {};
+        if (!username || typeof username !== 'string' || username.trim().length < 3) {
+            return res.status(400).json({ error: 'Usuario inválido' });
+        }
+        const userId = uuidv4();
+        const fp = getFingerprint(req);
+        const payload = { sub: userId, username: username.trim(), fp };
+        const token = jwt.sign(payload, USER_JWT_SECRET, { expiresIn: '30d' });
+        sessions.set(userId, { username: username.trim(), fp, exp: Date.now() + SESSION_TTL_MS });
+        res.json({ userId, token, expiresInDays: 30 });
+    } catch (error) {
+        console.error('Error emitiendo sesión:', error);
+        res.status(500).json({ error: 'Error emitiendo sesión' });
+    }
+});
+
 // Endpoint seguro para llamadas a OpenAI
-app.post('/api/openai', authenticateRequest, async (req, res) => {
+app.post('/api/openai', authenticateRequest, requireUserSession, async (req, res) => {
     try {
         const { prompt, context } = req.body;
         
@@ -214,7 +277,7 @@ app.post('/api/openai', authenticateRequest, async (req, res) => {
 });
 
 // Endpoint seguro para consultas a la base de datos
-app.post('/api/database', authenticateRequest, async (req, res) => {
+app.post('/api/database', authenticateRequest, requireUserSession, async (req, res) => {
     try {
         if (!pool) {
             return res.status(500).json({ error: 'Base de datos no configurada' });
@@ -235,7 +298,7 @@ app.post('/api/database', authenticateRequest, async (req, res) => {
 });
 
 // Endpoint para obtener contexto de la base de datos
-app.post('/api/context', authenticateRequest, async (req, res) => {
+app.post('/api/context', authenticateRequest, requireUserSession, async (req, res) => {
     try {
         if (!pool) {
             return res.json({ data: [] });

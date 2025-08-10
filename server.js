@@ -22,7 +22,10 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-            scriptSrc: ["'self'"],
+            // En desarrollo permitimos inline scripts (onclick) para compatibilidad rápida
+            scriptSrc: DEV_MODE ? ["'self'", "'unsafe-inline'"] : ["'self'"],
+            // Permitir atributos inline (onclick) explícitamente en CSP nivel 3 durante desarrollo
+            scriptSrcAttr: DEV_MODE ? ["'unsafe-inline'"] : [],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'", 'https://api.openai.com'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],

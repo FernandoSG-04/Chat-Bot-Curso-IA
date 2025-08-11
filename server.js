@@ -21,9 +21,9 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com', 'https://source.zoom.us'],
             // En desarrollo permitimos inline scripts (onclick) para compatibilidad rápida
-            scriptSrc: DEV_MODE ? ["'self'", "'unsafe-inline'"] : ["'self'"],
+            scriptSrc: DEV_MODE ? ["'self'", "'unsafe-inline'", 'https://source.zoom.us'] : ["'self'", 'https://source.zoom.us'],
             // Permitir atributos inline (onclick) explícitamente en CSP nivel 3 durante desarrollo
             scriptSrcAttr: DEV_MODE ? ["'unsafe-inline'"] : [],
             // Permitir iframes de YouTube/Vimeo para reproducir videos
@@ -31,16 +31,26 @@ app.use(helmet({
                 "'self'",
                 'https://www.youtube.com',
                 'https://www.youtube-nocookie.com',
-                'https://player.vimeo.com'
+                'https://player.vimeo.com',
+                'https://meet.google.com',
+                'https://meet.jit.si',
+                'https://zoom.us',
+                'https://*.zoom.us',
+                'https://source.zoom.us'
             ],
             childSrc: [
                 "'self'",
                 'https://www.youtube.com',
                 'https://www.youtube-nocookie.com',
-                'https://player.vimeo.com'
+                'https://player.vimeo.com',
+                'https://meet.google.com',
+                'https://meet.jit.si',
+                'https://zoom.us',
+                'https://*.zoom.us',
+                'https://source.zoom.us'
             ],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://api.openai.com'],
+            connectSrc: ["'self'", 'https://api.openai.com', 'https://api.assemblyai.com', 'https://meet.google.com', 'https://zoom.us', 'https://*.zoom.us', 'https://source.zoom.us'],
             mediaSrc: ["'self'", 'blob:', 'data:', 'https:'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://unpkg.com', 'data:'],
             frameAncestors: ["'none'"],
@@ -74,10 +84,20 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Servir prompts para depuración/inspección (protegido por API en endpoints abajo)
 app.use('/prompts', express.static(path.join(__dirname, 'prompts')));
 
+// Carpeta temporal de audios (entradas del micro)
+const tempDir = path.join(__dirname, 'tmp');
+if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+
 // Página de bienvenida (antes del inicio de sesión)
 app.get('/', (req, res) => {
     try {
-        res.sendFile(path.join(__dirname, 'src', 'welcome.html'));
+        // Intentar servir la nueva página de bienvenida primero
+        const newWelcomePath = path.join(__dirname, 'src', 'welcome-new.html');
+        if (fs.existsSync(newWelcomePath)) {
+            res.sendFile(newWelcomePath);
+        } else {
+            res.sendFile(path.join(__dirname, 'src', 'welcome.html'));
+        }
     } catch (_) {
         // Fallback en caso de que no exista la landing: redirigir a login
         res.redirect('/login/login.html');
@@ -218,6 +238,71 @@ const upload = multer({
         const allowed = ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'video/webm'];
         if (allowed.includes(file.mimetype)) return cb(null, true);
         cb(new Error('Tipo de archivo no permitido'));
+    }
+});
+
+// ====== AssemblyAI: transcripción ======
+app.post('/api/transcribe', authenticateRequest, requireUserSession, upload.single('audio'), async (req, res) => {
+    try {
+        const apiKey = process.env.ASSEMBLYAI_API_KEY;
+        if (!apiKey) return res.status(500).json({ error: 'ASSEMBLYAI_API_KEY no configurada' });
+        // Soportar 2 modos: archivo (multipart) o URL pregrabada (JSON body { audio_url })
+        let audioUrl = (req.body && req.body.audio_url) ? String(req.body.audio_url) : null;
+        if (!audioUrl) {
+            if (!req.file) return res.status(400).json({ error: 'Archivo de audio o audio_url requerido' });
+            // 1) Subir el archivo binario a AssemblyAI
+            const audioPath = path.join(uploadsDir, req.file.filename);
+            const audioData = fs.readFileSync(audioPath);
+            const uploadRes = await fetch('https://api.assemblyai.com/v2/upload', {
+                method: 'POST',
+                headers: {
+                    'authorization': apiKey,
+                    'content-type': 'application/octet-stream'
+                },
+                body: audioData
+            });
+            if (!uploadRes.ok) {
+                const t = await uploadRes.text();
+                return res.status(500).json({ error: 'Fallo subiendo audio a AssemblyAI', details: t.slice(0,200) });
+            }
+            const uploadJson = await uploadRes.json();
+            audioUrl = uploadJson.upload_url;
+        }
+
+        // 2) Crear trabajo de transcripción
+        const transcribeRes = await fetch('https://api.assemblyai.com/v2/transcript', {
+            method: 'POST',
+            headers: {
+                'authorization': apiKey,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({ audio_url: audioUrl, language_code: 'es' })
+        });
+        if (!transcribeRes.ok) {
+            const t = await transcribeRes.text();
+            return res.status(500).json({ error: 'Fallo creando transcripción', details: t.slice(0,200) });
+        }
+        const job = await transcribeRes.json();
+
+        // 3) Polling simple hasta completar
+        let status = job.status;
+        let transcript = null;
+        const endpoint = `https://api.assemblyai.com/v2/transcript/${job.id}`;
+        const started = Date.now();
+        while (status && ['queued','processing','submitted'].includes(status)) {
+            if (Date.now() - started > 120000) break; // 2 min máx
+            await new Promise(r=>setTimeout(r, 2500));
+            const st = await fetch(endpoint, { headers: { 'authorization': apiKey } });
+            const js = await st.json();
+            status = js.status;
+            if (status === 'completed') transcript = js.text;
+            if (status === 'error') return res.status(500).json({ error: 'Transcripción falló', details: js.error });
+        }
+        if (!transcript) return res.status(202).json({ status: status || 'processing' });
+        res.json({ text: transcript, status: 'completed' });
+    } catch (err) {
+        console.error('AssemblyAI error:', err);
+        res.status(500).json({ error: 'Error transcribiendo audio', details: err.message });
     }
 });
 
@@ -690,7 +775,7 @@ app.use((req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor seguro iniciado en puerto ${PORT}`);
+    console.log(`🚀 Lia IA — servidor iniciado en puerto ${PORT}`);
     console.log(`🔒 Modo: ${process.env.NODE_ENV || 'development'}`);
 });
 

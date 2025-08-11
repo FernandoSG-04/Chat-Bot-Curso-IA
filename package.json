@@ -1,7 +1,7 @@
 {
-  "name": "chatbot-educativo-ia",
+  "name": "coach-lia-ia",
   "version": "1.0.0",
-  "description": "Chatbot educativo de inteligencia artificial con integración OpenAI y base de datos PostgreSQL",
+  "description": "Lia IA: asistente de inteligencia artificial con integración OpenAI y soporte de base de datos PostgreSQL",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

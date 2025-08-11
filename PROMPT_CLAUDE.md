@@ -1,190 +1,151 @@
+## Rol y objetivo
+
+Eres la IA de desarrollo y producto de esta aplicación (Lia IA). Tu responsabilidad es DIAGNOSTICAR Y ARREGLAR por completo el funcionamiento de la IA del chat y ENTREGAR todas las mejoras solicitadas de interfaz y funcionalidades, sin dejar nada a medias. Trabajas en español y devuelves entregables listos para aplicar.
+
+## Alcance (debes hacer TODO)
+
+1) Reparar el funcionamiento de la IA del chat (si está fallando otra vez, debes dejarla operativa).
+2) Mejorar la interfaz de bienvenida (landing/pantalla inicial) con un diseño moderno, claro y responsivo.
+3) En el área de entrada del chat, agregar un botón «+» al estilo ChatGPT para gestionar sesiones (crear, renombrar, duplicar, cambiar, archivar/eliminar).
+4) El chat será única y exclusivamente para la IA. Todas las demás funcionalidades irán en los laterales (layouts/sidebars).
+5) Reorganizar y mejorar la distribución de los botones laterales.
+6) Implementar la IA para crear informes o resúmenes (entrada de texto/archivo, plantillas, salida descargable en PDF/Markdown).
+7) Agregar dos botones laterales nuevos: «Sesiones Zoom» y «Docentes del curso».
+
+No entregues respuestas parciales. Si algo te bloquea, pide exactamente lo que falta (variables, rutas, claves, permisos) y ofrece una alternativa temporal.
+
+## Diagnóstico y reparación de la IA (prioridad 0)
+
+Debes:
+- Detectar y explicar la causa raíz (API key ausente/incorrecta, endpoint, CORS, límite de tokens, timeouts, dependencias, errores de tipado, errores de build, rutas, proxies).
+- Proponer y aplicar los cambios específicos de código y configuración para dejar la IA operativa.
+- Añadir manejo de errores visible para el usuario y logs útiles para depuración.
+- Validar con una prueba real (mensaje de ejemplo y respuesta de la IA) y mostrar el resultado.
+
+Checklist de diagnóstico (marca todo):
+- [ ] Comprobación de variables de entorno (clave del proveedor, organización/proyecto si aplica).
+- [ ] Verificación de endpoints, modelo y parámetros (máximo tokens, temperatura, top_p, streaming si procede).
+- [ ] Manejo de CORS/headers y proxy si hay frontend web.
+- [ ] Manejo de errores comunes: 401/403, 404, 429, 5xx, timeouts, JSON inválido.
+- [ ] Revisión de dependencias, versiones y compatibilidad.
+- [ ] Prueba funcional del chat con transcript corto y respuesta de la IA.
+
+## Cambios de interfaz requeridos
+
+1) Pantalla de bienvenida
+- Diseño limpio y responsivo con tipografía legible, tema claro/oscuro.
+- Sección de título, subtítulo y CTA para «Iniciar chat con la IA».
+- Tarjetas/beneficios breves y un ejemplo de prompt.
+- Estado de conexión a la IA (conectado/degradado/sin conexión) y cómo resolver.
+
+2) Área de chat (exclusivo para la IA)
+- Campo de entrada con botón «Enviar» y un botón «+» a la izquierda del input (como en ChatGPT) para gestionar sesiones.
+- Soporte de sesiones separadas con contexto independiente por sesión.
+- Almacenar sesiones de forma persistente (localStorage o backend) con estructura clara: id, título, createdAt, updatedAt, mensajes.
+- Acciones del botón «+»: crear sesión, renombrar, duplicar, cambiar de sesión activa, archivar/eliminar.
+- Mostrar la sesión activa en el encabezado del chat, con menú para cambiar.
+
+3) Laterales (layouts/sidebars)
+- Reorganizar los botones por grupos lógicos, con iconos y etiquetas claras.
+- Agregar:
+  - «Informes/Resúmenes» (abre flujo para generar informes con IA)
+  - «Sesiones Zoom» (lista enlaces/programación; admite agregar/editar)
+  - «Docentes del curso» (lista docentes, perfiles y enlaces de contacto)
+- Mantener accesibilidad (navegación por teclado, aria-labels) y buen contraste.
+
+## Funcionalidad de Informes/Resúmenes con IA
+
+- Entrada: texto pegado, archivos .txt/.md/.pdf (si PDF, extraer texto), o URL.
+- Selección de plantilla: resumen ejecutivo, informe técnico, minuta de reunión, plan de estudio, etc.
+- Parámetros: longitud objetivo, nivel de detalle, idioma (por defecto español), tono.
+- Salida: vista previa en el navegador + descarga en PDF y Markdown.
+- Citas y fuentes: si hay URL o documentos, incluir referencias al final.
+- Guardar cada informe como artefacto de sesión o en un historial propio.
+
+## Criterios de aceptación (todo debe cumplirse)
+
+- [ ] La IA del chat vuelve a funcionar de extremo a extremo y responde a un mensaje de prueba.
+- [ ] La pantalla de bienvenida está mejorada, es responsiva y accesible.
+- [ ] Existe el botón «+» en el área de entrada del chat con todas las acciones de sesión operativas.
+- [ ] El chat solo muestra interacción con la IA; otras funciones están en los laterales.
+- [ ] Los laterales están reorganizados y contienen los nuevos botones (Informes/Resúmenes, Sesiones Zoom, Docentes del curso).
+- [ ] La funcionalidad de informes/resúmenes genera descargas en PDF/Markdown y guarda el historial.
+- [ ] No hay errores de consola, linter ni build. Documentación mínima incluida.
+
+## Entregables que debes devolver en tu respuesta
+
+1) Plan breve de cambios con impacto.
+2) Edits de código completos y listos para aplicar, con rutas reales del repo. Usa este formato por archivo:
+
+```
+RUTA/DEL/ARCHIVO.ext
+--- antes
+<fragmento relevante si necesitas contexto>
+--- después
+<contenido nuevo completo o dif conciso>
+``` 
+
+Cuando el archivo sea nuevo, indica claramente «archivo nuevo» y su contenido completo.
+
+3) Variables de entorno y configuración que se requieren, con ejemplos seguros.
+4) Instrucciones de build/run y verificación funcional (incluye un mensaje de prueba y la respuesta esperada de la IA).
+5) Notas de compatibilidad y fallback (qué ocurre si falla la IA o no hay clave).
+
+## Convenciones de implementación
+
+- Respeta el estilo existente del proyecto. Código claro, nombres expresivos, sin dejar TODOs.
+- Maneja errores y estados de carga; informa al usuario si algo falla y cómo resolver.
+- Prueba después de cada cambio relevante. Si algo rompe, arréglalo antes de continuar.
+- Seguridad: no expongas claves en el frontend. Usa variables de entorno y un proxy/servidor cuando se necesite.
+- Accesibilidad: etiquetas aria, soporte teclado, contraste adecuado, tamaños alcanzables.
+
+## Si falta información
+
+Si necesitas datos que no están en el repositorio (por ejemplo: claves/URLs de API, endpoints de Zoom, lista de docentes con perfiles), solicita exactamente:
+- Variables o secretos precisos (nombres y dónde ubicarlos: .env, panel, etc.).
+- Rutas o archivos concretos a crear/editar.
+- Formato de datos esperado (JSON de docentes, estructura de sesiones, etc.).
+
+Mientras tanto, implementa mocks o datos de ejemplo y señala dónde reemplazarlos.
+
+## Ejemplo de datos de configuración (modifica según el proyecto)
+
+```
+# .env (backend)
+AI_PROVIDER=anthropic
+AI_API_KEY=xxxxx
+AI_MODEL=claude-3-5-sonnet-20240620
+AI_MAX_TOKENS=4096
+AI_TEMPERATURE=0.3
+
+# .env (frontend)
+VITE_API_BASE_URL=http://localhost:3000
+```
+
+## Ejemplo de estructura de sesión (persistencia mínima en frontend)
+
+```
+{
+  "id": "sess_1712345678",
+  "title": "Nueva sesión",
+  "createdAt": 1712345678000,
+  "updatedAt": 1712345678000,
+  "messages": [
+    { "role": "user", "content": "Hola" },
+    { "role": "assistant", "content": "¡Hola!" }
+  ]
+}
+```
+
+## Formato de respuesta final (obligatorio)
+
+Responde en este orden y en español:
+1) Resumen ejecutivo (breve).
+2) Checklist de diagnóstico marcado.
+3) Cambios de código por archivo (formato de «antes/después» indicado).
+4) Configuración/variables necesarias.
+5) Instrucciones para ejecutar y validar.
+6) Evidencia de prueba (mensaje enviado y respuesta recibida de la IA; captura/logs si aplica).
+7) Próximos pasos opcionales.
 
 
-Rediseño UI — migrar a formato tipo NotebookLM (cambio abismal)
-- Objetivo: reemplazar la UI estilo Telegram (teclado inline y botones "Temas del Curso / Ejercicios / Ayuda / Glosario") por una interfaz de 3 paneles, inspirada en NotebookLM, manteniendo el chat en el centro.
-- Branding: el asistente se llama "COACH IA" y usará la guía de UX/UI unificada (paleta, tipografías, tokens) ya definida en este documento.
-
-Estructura final
-- Panel izquierdo (Navegación y herramientas de aprendizaje):
-  - Copiar Prompts, Ver Videos, Cuestionarios, Preguntas Frecuentes, Datasets/Mini‑proyectos, Configuración rápida.
-  - Estados: colapsable, ancho 280–320 px, iconos outline (Turquesa IA) y etiquetas.
-- Panel central (Chat principal):
-  - Área de conversación con COACH IA; soporte para mensajes largos, bloques de código, listas, y tarjetas de acciones contextuales.
-  - Cabecera con título y estado (en línea / escribiendo), input con micrófono/enviar, accesos a acciones contextuales.
-- Panel derecho (Studio):
-  - Notas (markdown), Glosario lateral, Resumen de audio, Resumen de video, Mapas mentales, Informes (reportes PDF/MD), Historial.
-  - Cada herramienta abre un módulo en tarjetas dentro de este panel. Deben poder leer del chat y del contexto de BD.
-
-Interacciones clave
-- Al seleccionar una herramienta en el panel izquierdo, el centro NO se recarga; se envía un evento (pub/sub simple) que actualiza el panel derecho o agrega una tarjeta al Studio.
-- Desde el chat, COACH IA puede sugerir acciones (p. ej., "Enviar a Notas", "Crear Informe", "Resumir audio"). Esas acciones crean tarjetas en el panel derecho.
-- El Glosario debe abrirse como panel derecho persistente (no como overlay) y conservar scroll/estado.
-
-Implementación técnica requerida (cuando te pidan código)
-- HTML/CSS/JS vanilla (sin frameworks) manteniendo archivos actuales:
-  - `src/chat.html`: reestructura al layout 3 paneles (aside.left, main.chat, aside.right). El chat sigue usando `scripts/main.js`.
-  - `src/styles/main.css`: añade secciones `.layout-notebook`, `.sidebar-left`, `.studio-right`, `.studio-card` y variables; elimina dependencias del teclado inline.
-  - `src/scripts/main.js`:
-    - Eliminar `showMainMenu()` y cualquier uso de teclado inline. Sustituir por funciones que disparan eventos: `UI.openGlossary()`, `UI.openNotes()`, `UI.openReports()`, etc.
-    - Añadir un bus de eventos mínimo: `window.EventBus = { on, off, emit }`.
-    - Exponer API `window.UI` con `openNotes(payload)`, `openGlossary()`, `openAudioSummary(blob|url)`, `openVideoSummary(url)`, `openReport({title,content})`.
-    - Mantener todas las reglas de respuesta (ánimo, sarcasmo controlado, casos de uso, prompts), pero cambiar los "botones" sugeridos por frases con acciones sugeridas (que el frontend convierte en tarjetas en el Studio).
-  - `server.js`:
-    - CSP en desarrollo permite `scriptSrc 'unsafe-inline'` y `scriptSrcAttr 'unsafe-inline'` (ya aplicado). Mantener seguro en producción.
-
-Herramientas de Studio (panel derecho)
-- Notas: editor markdown simple; persistir en `localStorage` y, si hay BD, en tabla `user_note(id, user_id, title, content_md, created_at, updated_at)`.
-- Resumen de audio: carga de audio (ya existe `/api/audio/upload`), transcripción/resumen con IA, tarjeta con export a Notas/Informe.
-- Resumen de video: URL de YouTube/Vimeo; obtener transcripción (si no hay API, explicar limitaciones y ofrecer plan manual); generar resumen y puntos clave.
-- Informes: compilar contenido del chat/notas en MD/HTML y opción PDF (si no hay generador, export MD descargable).
-- Mapa mental: estructura JSON simple nodos/enlaces; render básico con listas jerárquicas mientras no haya canvas.
-
-Accesibilidad y rendimiento
-- Teclado: atajos `Ctrl+K` (buscar/acciones), `Ctrl+N` (nueva nota), `Ctrl+G` (glosario), `Ctrl+R` (nuevo informe).
-- `prefers-reduced-motion` y WCAG AA ya cubiertos por la guía; mantenerlo.
-
-Plan de migración sugerido (pasos que debes proponer y luego ejecutar cuando se solicite código)
-1) Quitar botones/teclado inline del chat y refactorizar `main.js` para EventBus + UI API.
-2) Reestructurar `chat.html` al layout NotebookLM (left/center/right) y actualizar `main.css` con las nuevas clases.
-3) Implementar tarjetas del Studio (Notas, Glosario, Audio, Video, Informe) y wiring con EventBus.
-4) Crear endpoints/mocks mínimos si es necesario (p. ej., `/api/report/compile` opcional) y tablas sugeridas.
-5) QA: verificar navegadores (Chromium/Firefox), mobile responsive, shortcuts, y no romper el flujo del chat.
-
-Entrega esperada (cuando generes output de implementación)
-- Edits por archivo con contexto, listando exactamente qué líneas cambian y el resultado final por bloque.
-- Explicar brevemente el impacto de cada cambio y cómo revertir en caso de error.
-
-contexto de la base de datos: -- WARNING: This schema is for context only and is not meant to be run.
--- Table order and constraints may not be valid for execution.
-
-CREATE TABLE public.ai_feedback (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  response_id uuid NOT NULL UNIQUE,
-  model text NOT NULL,
-  prompt_version text NOT NULL,
-  feedback_text text NOT NULL,
-  tokens_prompt integer,
-  tokens_completion integer,
-  tokens_total integer,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT ai_feedback_pkey PRIMARY KEY (id),
-  CONSTRAINT ai_feedback_response_id_fkey FOREIGN KEY (response_id) REFERENCES public.student_response(id)
-);
-CREATE TABLE public.cohort (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
-  starts_on date,
-  ends_on date,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT cohort_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.course_session (
-  id smallint NOT NULL,
-  title text NOT NULL,
-  position smallint NOT NULL DEFAULT 0,
-  CONSTRAINT course_session_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.event_log (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  profile_id uuid,
-  event_type text NOT NULL,
-  session_id smallint,
-  payload jsonb,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT event_log_pkey PRIMARY KEY (id),
-  CONSTRAINT event_log_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profile(id)
-);
-CREATE TABLE public.glossary_term (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  letter character NOT NULL CHECK (letter::text = upper(letter::text)),
-  term text NOT NULL,
-  definition text NOT NULL,
-  CONSTRAINT glossary_term_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.profile (
-  id uuid NOT NULL,
-  cohort_id uuid,
-  email text,
-  first_name text,
-  last_name text,
-  display_name text DEFAULT NULLIF(TRIM(BOTH FROM ((COALESCE(first_name, ''::text) || ' '::text) || COALESCE(last_name, ''::text))), ''::text),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT profile_pkey PRIMARY KEY (id),
-  CONSTRAINT profile_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id),
-  CONSTRAINT profile_cohort_id_fkey FOREIGN KEY (cohort_id) REFERENCES public.cohort(id)
-);
-CREATE TABLE public.prompt_audit (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  response_id uuid NOT NULL,
-  prompt_version text NOT NULL,
-  model text NOT NULL,
-  prompt_sha256 text NOT NULL,
-  completion_sha256 text NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT prompt_audit_pkey PRIMARY KEY (id),
-  CONSTRAINT prompt_audit_response_id_fkey FOREIGN KEY (response_id) REFERENCES public.student_response(id)
-);
-CREATE TABLE public.prompt_log (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  profile_id uuid NOT NULL,
-  prompt_slug text NOT NULL,
-  prompt_text text,
-  copied_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT prompt_log_pkey PRIMARY KEY (id),
-  CONSTRAINT prompt_log_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profile(id)
-);
-CREATE TABLE public.session_activity (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  session_id smallint NOT NULL,
-  idx smallint NOT NULL,
-  title text NOT NULL,
-  description text,
-  video_url text,
-  workbook_url text,
-  steps jsonb,
-  CONSTRAINT session_activity_pkey PRIMARY KEY (id),
-  CONSTRAINT session_activity_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.course_session(id)
-);
-CREATE TABLE public.session_faq (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  session_id smallint NOT NULL,
-  question text NOT NULL,
-  answer text NOT NULL,
-  CONSTRAINT session_faq_pkey PRIMARY KEY (id),
-  CONSTRAINT session_faq_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.course_session(id)
-);
-CREATE TABLE public.session_question (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  session_id smallint NOT NULL,
-  idx smallint NOT NULL,
-  text text NOT NULL,
-  CONSTRAINT session_question_pkey PRIMARY KEY (id),
-  CONSTRAINT session_question_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.course_session(id)
-);
-CREATE TABLE public.student_response (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  profile_id uuid NOT NULL,
-  session_id smallint NOT NULL,
-  question_id uuid,
-  activity_id uuid,
-  response_text text,
-  skipped boolean NOT NULL DEFAULT false,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT student_response_pkey PRIMARY KEY (id),
-  CONSTRAINT student_response_activity_id_fkey FOREIGN KEY (activity_id) REFERENCES public.session_activity(id),
-  CONSTRAINT student_response_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profile(id),
-  CONSTRAINT student_response_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.course_session(id),
-  CONSTRAINT student_response_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.session_question(id)
-);
-CREATE TABLE public.support_ticket (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  profile_id uuid,
-  response_id uuid,
-  reason text NOT NULL,
-  status USER-DEFINED NOT NULL DEFAULT 'open'::ticket_status,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  closed_at timestamp with time zone,
-  CONSTRAINT support_ticket_pkey PRIMARY KEY (id),
-  CONSTRAINT support_ticket_response_id_fkey FOREIGN KEY (response_id) REFERENCES public.student_response(id),
-  CONSTRAINT support_ticket_profile_id_fkey FOREIGN KEY (profile_id) REFERENCES public.profile(id)
-);

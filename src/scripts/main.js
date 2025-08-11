@@ -1,6 +1,6 @@
 // Configuración del chatbot según PROMPT_CLAUDE.md
 const CHATBOT_CONFIG = {
-    name: 'COACH IA',
+    name: 'Lia IA',
     typingSpeed: 50,
     responseDelay: 1000,
     audioEnabled: true,
@@ -19,6 +19,14 @@ const CHATBOT_CONFIG = {
     database: {
         url: null // Se cargará dinámicamente
     }
+};
+
+// Estructura del curso: solo títulos de sesiones y módulos
+const COURSE_SESSIONS = {
+    '1': { title: 'Sesión 1: Descubriendo la IA para Profesionales' },
+    '2': { title: 'Sesión 2: Fundamentos de Machine Learning' },
+    '3': { title: 'Sesión 3: Deep Learning y Casos Prácticos' },
+    '4': { title: 'Sesión 4: Aplicaciones, Ética y Proyecto Final' }
 };
 
 // Estado del chatbot
@@ -48,7 +56,9 @@ const inputContainer = document.getElementById('inputContainer');
 function getBotAvatarHTML() {
     return `
         <div class="msg-avatar bot">
-            <div class="avatar-circle"><i class='bx bx-bot'></i></div>
+            <div class="avatar-circle">
+                <img src="assets/images/AprendeIA.png" alt="Lia IA" onerror="this.onerror=null;this.src='assets/images/AprendeIA.jpg'" />
+            </div>
         </div>
     `;
 }
@@ -73,6 +83,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeChat();
     });
     setupEventListeners();
+    setupResizableLeft();
+    setupVideoPicker();
+    setupAvatarLightbox();
     // Sincronizar estado inicial del botón de acción
     if (messageInput.value.trim().length > 0) {
         inputContainer.classList.add('input-has-text');
@@ -193,8 +206,8 @@ function initializeChat() {
         } catch (_) {}
 
         const greeting = chatState.userName
-            ? `¡Hola, ${chatState.userName}!  Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`
-            : `¡Hola!  Bienvenido al Chatbot Educativo de Inteligencia Artificial.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante todo el curso de IA profesional.`;
+            ? `¡Hola, ${chatState.userName}!  Bienvenido a Lia IA.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante tu aprendizaje en IA.`
+            : `¡Hola!  Bienvenido a Lia IA.\n\nSoy tu asistente virtual y estaré aquí para acompañarte durante tu aprendizaje en IA.`;
 
         await sendBotMessage(greeting, null, false, true);
         await showWelcomeInstructions();
@@ -216,7 +229,7 @@ function playWelcomeAudio() {
 // Reproducir audio usando Web Speech API
 function playWelcomeSpeech() {
     try {
-        const welcomeText = "¡Hola! Bienvenido al Chatbot Educativo de Inteligencia Artificial. Soy tu asistente virtual y estaré aquí para acompañarte durante todo el curso.";
+        const welcomeText = "¡Hola! Bienvenido a Lia IA. Soy tu asistente virtual y estaré aquí para acompañarte durante tu aprendizaje en IA.";
         const utterance = new SpeechSynthesisUtterance(welcomeText);
         utterance.lang = 'es-ES';
         utterance.rate = 0.85;
@@ -287,13 +300,15 @@ function setupEventListeners() {
     messageInput.addEventListener('change', updateActionState);
 
     // Toggle de audio y persistencia
-    audioToggle.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const newState = toggleAudio();
-        if (!newState) audioToggle.classList.add('muted'); else audioToggle.classList.remove('muted');
-        try { localStorage.setItem('chat_audio_enabled', JSON.stringify(newState)); } catch(_){}
-    });
+    if (audioToggle) {
+        audioToggle.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const newState = toggleAudio();
+            if (!newState) audioToggle.classList.add('muted'); else audioToggle.classList.remove('muted');
+            try { localStorage.setItem('chat_audio_enabled', JSON.stringify(newState)); } catch(_){ }
+        });
+    }
 
     // Cargar preferencia de audio (sin forzar toggle de lógica)
     try {
@@ -301,7 +316,7 @@ function setupEventListeners() {
         if (saved !== null) {
             const enabled = JSON.parse(saved);
             chatState.audioEnabled = !!enabled;
-            if (!enabled) audioToggle.classList.add('muted'); else audioToggle.classList.remove('muted');
+            if (audioToggle) { if (!enabled) audioToggle.classList.add('muted'); else audioToggle.classList.remove('muted'); }
         }
     } catch(_){ }
 
@@ -350,6 +365,8 @@ function setupEventListeners() {
                     case 'copy-prompts': EventBus.emit('ui:copyPrompts'); break;
                     case 'open-quizzes': EventBus.emit('ui:openQuizzes'); break;
                     case 'open-faq': EventBus.emit('ui:openFAQ'); break;
+                    case 'open-zoom': EventBus.emit('ui:openZoom'); break;
+                    case 'open-teachers': EventBus.emit('ui:openTeachers'); break;
                 }
             });
         });
@@ -372,10 +389,26 @@ function setupEventListeners() {
                         case 'open-video': EventBus.emit('ui:openVideo'); break;
                         case 'open-report': EventBus.emit('ui:openReport'); break;
                         case 'open-notes': EventBus.emit('ui:openNotes'); break;
+                        case 'open-zoom': EventBus.emit('ui:openZoom'); break;
+                        case 'open-teachers': EventBus.emit('ui:openTeachers'); break;
                     }
                 });
             });
         }
+        // Asegurar eventos para tiles del panel derecho (aún cuando colapsa/expande)
+        document.querySelectorAll('.studio-tiles .tile').forEach(tile => {
+            tile.addEventListener('click', () => {
+                const action = tile.getAttribute('data-action');
+                switch(action) {
+                    case 'open-audio': EventBus.emit('ui:openAudio'); break;
+                    case 'open-video': EventBus.emit('ui:openVideo'); break;
+                    case 'open-report': EventBus.emit('ui:openReport'); break;
+                    case 'open-notes': EventBus.emit('ui:openNotes'); break;
+                    case 'open-zoom': EventBus.emit('ui:openZoom'); break;
+                    case 'open-teachers': EventBus.emit('ui:openTeachers'); break;
+                }
+            });
+        });
     } catch(_){}
 
     // Forzar primer estado
@@ -389,6 +422,18 @@ function setupEventListeners() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
+
+    // Botón + de sesiones
+    const sessionBtn = document.getElementById('sessionMenuButton');
+    if (sessionBtn) {
+        sessionBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Asegurar que el contenido esté cargado antes de mostrar
+            renderSessionPicker();
+            toggleSessionMenu();
+        });
+    }
 }
 
 // ===== Nuevo: EventBus y UI API =====
@@ -415,38 +460,232 @@ function setupEventBusAndUI() {
         openNotes(initial = '') { addCard('Notas', `<textarea style="width:100%;height:160px">${initial}</textarea>`); },
         openGlossary() { addCard('Glosario', `<div id="glossaryPanelMount">Usa las letras para explorar términos.</div>`); showGlossary(); },
         openAudioSummary() { addCard('Resumen de audio', '<div>Sube audio desde el botón de micrófono y lo resumiré aquí.</div>'); },
-        openVideoSummary() {
-            addCard('Resumen de video', `
-                <div style="display:grid;gap:8px">
-                    <input id="videoUrlInput" type="url" placeholder="Pega la URL de YouTube/Vimeo" style="padding:8px;border-radius:8px;border:1px solid rgba(68,229,255,.25);background:rgba(255,255,255,.02);color:var(--text-on-dark)">
-                    <button id="loadVideoBtn" class="keyboard-button" style="max-width:160px">Cargar y resumir</button>
-                    <div id="videoSummary" style="color:var(--text-muted)">Pega la URL del video para generar un resumen.</div>
-                    <div id="videoPlayer" style="aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden"></div>
+        openZoomSessions() { 
+            addCard('Sesiones Zoom', `
+                <div style="display:grid;gap:12px">
+                    <div style="background:rgba(68,229,255,.1);padding:12px;border-radius:8px">
+                        <h5 style="margin:0 0 8px">📅 Próximas sesiones</h5>
+                        <p style="margin:0;font-size:14px;color:var(--text-muted)">Miércoles 14/08 - 19:00 hrs<br/>Tema: Fundamentos de IA</p>
+                        <button class="keyboard-button" style="margin-top:8px;padding:6px 12px;font-size:14px">Unirse a Zoom</button>
+                    </div>
+                    <div style="border:1px solid rgba(68,229,255,.15);padding:12px;border-radius:8px">
+                        <h5 style="margin:0 0 8px">🔗 Enlaces permanentes</h5>
+                        <input type="url" placeholder="https://zoom.us/j/..." style="width:100%;padding:6px;margin:4px 0;border-radius:6px;border:1px solid rgba(68,229,255,.25);background:rgba(255,255,255,.04);color:var(--text-on-dark)">
+                        <button class="keyboard-button" style="padding:6px 12px;font-size:14px">Agregar enlace</button>
+                    </div>
                 </div>
-            `);
-            // Comportamiento básico: insertar iframe si es YouTube y placeholder de resumen
-            setTimeout(() => {
-                const urlInput = document.getElementById('videoUrlInput');
-                const loadBtn = document.getElementById('loadVideoBtn');
-                const player = document.getElementById('videoPlayer');
-                const summary = document.getElementById('videoSummary');
-                if (!loadBtn) return;
-                loadBtn.addEventListener('click', async () => {
-                    const url = (urlInput?.value||'').trim();
-                    if (!url) return;
-                    // Render rápido de iframe YouTube si aplica
-                    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-                        const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-                        player.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen></iframe>`;
-                    } else {
-                        player.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">Abrir video</a>`;
-                    }
-                    // Placeholder: llamar IA para resumen cuando esté disponible; por ahora, mensaje educativo
-                    summary.textContent = 'Generaré un resumen del video (si hay transcripción disponible). Puedes indicarme qué secciones te interesan.';
-                });
+            `); 
+        },
+        openTeachers() { 
+            addCard('Docentes del curso', `
+                <div class="teacher-profile">
+                    <div class="teacher-photo" style="background-image:url('assets/images/Ernesto.jpg')"></div>
+                    <div class="teacher-head">
+                        <h3 class="teacher-name">Ernesto Hernández Martínez | Renato Verum, "El Pastor Cibernético"</h3>
+                        <p class="teacher-title">Ingeniero en Comunicaciones y Electrónica | Líder en IA Generativa y Transformación Digital | "El Pastor Cibernético"</p>
+                        <div class="teacher-section">
+                            <h4 class="section-title">Perfil Profesional</h4>
+                            <p class="section-text">Soy un líder visionario dedicado a transformar organizaciones mediante la integración ética y estratégica de la inteligencia artificial generativa con principios profundamente humanos como el amor, la sabiduría y el servicio.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="teacher-section">
+                    <p class="section-text">A través del Liderazgo Áureo, mi enfoque promueve decisiones conscientes y colaborativas, fortaleciendo la productividad e innovación desde una perspectiva ágil y práctica. Creo firmemente en una tecnología centrada en las personas, potenciando su talento y creatividad para construir empresas humanas y altamente competitivas en la era digital.</p>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Experiencia Destacada</h4>
+                    <h5 class="role">Cofundador | Aprende y Aplica IA</h5>
+                    <ul class="section-list">
+                        <li>Lidero formaciones ágiles y prácticas en inteligencia artificial generativa, capacitando a líderes empresariales para aplicar IA de inmediato en sus organizaciones.</li>
+                        <li>Incremento promedio del 40% en productividad y eficiencia operativa en empresas participantes desde el primer día.</li>
+                        <li>Desarrollo de metodologías exclusivas que permiten resultados visibles en toma de decisiones y ventaja competitiva.</li>
+                        <li>Establecimiento de hábitos de aprendizaje continuo con impacto real en proyectos.</li>
+                    </ul>
+                    <h5 class="role">Fundador | Ecos de Liderazgo & Fundación Ecos de Liderazgo</h5>
+                    <ul class="section-list">
+                        <li>Diseño e implementación de ecosistemas inteligentes de colaboración digital impulsados por IA generativa.</li>
+                        <li>Más de 50 empresas impactadas positivamente, transformando la cultura organizacional hacia un liderazgo humanista.</li>
+                        <li>Establecimiento de programas que convierten conocimiento tácito en explícito, optimizando procesos clave hasta en un 35%.</li>
+                        <li>Mentoría a equipos directivos para decisiones éticas y efectivas en transformación digital.</li>
+                    </ul>
+                    <h5 class="role">Creador y Líder | PulseHub</h5>
+                    <ul class="section-list">
+                        <li>Desarrollo de una plataforma innovadora que utiliza IA predictiva para anticipar desafíos organizacionales y mejorar la toma de decisiones.</li>
+                        <li>Incremento del compromiso del equipo en más del 60%, optimizando procesos críticos y reduciendo tiempos operativos.</li>
+                        <li>Reconocimiento por la creación de entornos laborales altamente productivos y emocionalmente saludables.</li>
+                    </ul>
+                    <h5 class="role">Cofundador | Alfasoluciones & Mercadata | Mentor Estratégico</h5>
+                    <ul class="section-list">
+                        <li>Implementación exitosa de soluciones tecnológicas avanzadas (ERP, análisis de datos) en más de 200 proyectos empresariales.</li>
+                        <li>Mentoría personalizada a más de 100 líderes ejecutivos en transformación digital y liderazgo consciente.</li>
+                        <li>Mejora del rendimiento comercial en promedio del 50% mediante estrategias digitales y automatización inteligente.</li>
+                    </ul>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Habilidades Estratégicas</h4>
+                    <ul class="section-list">
+                        <li><strong>Inteligencia Artificial Generativa:</strong> Aplicación inmediata y práctica en contextos empresariales.</li>
+                        <li><strong>Liderazgo Áureo:</strong> Integración efectiva del amor, sabiduría y servicio en la gestión empresarial.</li>
+                        <li><strong>Gestión del Cambio:</strong> Facilitación ágil y humanista en procesos de transformación digital.</li>
+                        <li><strong>Diseño de Ecosistemas Inteligentes:</strong> Creación de plataformas colaborativas predictivas.</li>
+                        <li><strong>Pensamiento Innovador y Ético:</strong> Decisiones conscientes y estratégicamente disruptivas.</li>
+                        <li><strong>Resiliencia y Adaptabilidad:</strong> Competencia clave para liderar en entornos altamente dinámicos.</li>
+                    </ul>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Metas y Visión</h4>
+                    <ul class="section-list">
+                        <li>Expandir Aprende y Aplica IA en Latinoamérica, consolidándolo como referente global en formación ágil y práctica en IA generativa.</li>
+                        <li>Desarrollar nuevas herramientas tecnológicas que potencien aún más PulseHub y Mente Convergente.</li>
+                        <li>Creación de un comunidad internacional de líderes conscientes capaces de transformar organizaciones a través de IA ética y efectiva.</li>
+                    </ul>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Más Allá de lo Profesional</h4>
+                    <ul class="section-list">
+                        <li>Apasionado del crecimiento espiritual y personal.</li>
+                        <li>Deportista comprometido: running, natación y fitness.</li>
+                        <li>Orador motivacional enfocado en inspirar transformaciones positivas y liderazgo auténtico.</li>
+                    </ul>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Datos Personales</h4>
+                    <p class="section-text">Email: <a href="mailto:ernesto@aprendeyaplica.ai">ernesto@aprendeyaplica.ai</a><br/>LinkedIn: <a href="#" target="_blank" rel="noopener noreferrer">[Insertar enlace aquí]</a></p>
+                </div>
+
+                <hr style="border-color: rgba(68,229,255,0.2); margin:16px 0"/>
+
+                <div class="teacher-profile">
+                    <div class="teacher-photo" style="background-image:url('assets/images/Alejandra.jpg')"></div>
+                    <div class="teacher-head">
+                        <h3 class="teacher-name">Alejandra Rodríguez Escobar | "La Arquitecta Audiovisual"</h3>
+                        <p class="teacher-title">Licenciada en Ciencias de la Comunicación | Maestría en Diseño Multimedia (en curso) | Especialización en Creación de Contenido Audiovisual | Estrategia Digital | Certificación en Social Media Management</p>
+                        <div class="teacher-section">
+                            <h4 class="section-title">Perfil Profesional</h4>
+                            <p class="section-text">Soy Licenciada en Ciencias de la Comunicación y actualmente curso una Maestría en Diseño Multimedia, especializándome en integrar técnicas avanzadas de inteligencia artificial en proyectos audiovisuales.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="teacher-section">
+                    <p class="section-text">Mi pasión por la innovación digital me impulsa a explorar nuevas herramientas que potencien la creatividad y permitan ofrecer contenidos interactivos, inmersivos y relevantes para diferentes audiencias. Combino pensamiento estratégico con dominio tecnológico para crear experiencias visuales y narrativas digitales únicas, optimizando el engagement y fortaleciendo la identidad corporativa en plataformas digitales.</p>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Experiencia Destacada</h4>
+                    <h5 class="role">Diseñadora Gráfica y Community Manager | CAM Centro de Artes y Música</h5>
+                    <ul class="section-list">
+                        <li>Lideró la creación integral de contenido gráfico y multimedia, potenciando la presencia digital de la organización en diversas plataformas.</li>
+                        <li>Implementó campañas de social media que aumentaron en 45% el alcance orgánico y 30% la interacción.</li>
+                        <li>Optimizó procesos de producción y postproducción audiovisual con herramientas avanzadas, reduciendo 25% tiempos de entrega.</li>
+                    </ul>
+                    <h5 class="role">Editora de Contenido Audiovisual | Latin Media Group</h5>
+                    <ul class="section-list">
+                        <li>Gestión integral de edición profesional de videos y fotografía, asegurando calidad visual y coherencia narrativa.</li>
+                        <li>Desarrolló estrategias digitales que incrementaron la visibilidad en un 40% durante el primer año.</li>
+                        <li>Eficiencia operativa: reducción del 20% en tiempos de publicación en plataformas digitales.</li>
+                    </ul>
+                    <h5 class="role">Gestora de Contenido Multimedia (Servicio Social) | Grupo Fórmula</h5>
+                    <ul class="section-list">
+                        <li>Identificación estratégica de contenidos noticiosos y producción audiovisual para maximizar atención en YouTube.</li>
+                        <li>Supervisión de edición y postproducción, incrementando 35% la retención promedio de espectadores.</li>
+                        <li>Optimización del alcance mediante contenidos enfocados en relevancia y valor para la audiencia.</li>
+                    </ul>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Habilidades Estratégicas</h4>
+                    <ul class="section-list">
+                        <li>Creación y edición avanzada de contenido multimedia.</li>
+                        <li>Gestión efectiva de redes sociales y estrategias de engagement.</li>
+                        <li>Diseño gráfico, fotografía, retoque y postproducción.</li>
+                        <li>Redacción creativa de guiones y storytelling.</li>
+                        <li>Adaptabilidad, trabajo en equipo y empatía.</li>
+                    </ul>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Metas y Visión</h4>
+                    <p class="section-text">A corto y mediano plazo, posicionarme como referente en diseño multimedia y comunicación digital, integrando IA en narrativas visuales impactantes con tecnologías emergentes. A largo plazo, liderar iniciativas que fortalezcan la comunicación de las marcas y transformen positivamente la experiencia de audiencias diversas.</p>
+                </div>
+
+                <div class="teacher-section">
+                    <h4 class="section-title">Más Allá de lo Profesional</h4>
+                    <ul class="section-list">
+                        <li>Apasionada por la fotografía creativa y el retoque como medio de expresión.</li>
+                        <li>Exploradora constante de tendencias audiovisuales.</li>
+                        <li>Promotora del trabajo colaborativo y la innovación multidisciplinaria.</li>
+                    </ul>
+                </div>
+            `); 
+        },
+        openVideoSummary() {
+            // Reutilizar una única tarjeta de resumen
+            let card = document.querySelector('.studio-card[data-kind="video-summary"]');
+            if (!card) {
+                card = addCard('Resumen de video', `
+                    <div id="videoSummary" style="color:var(--text-muted)">
+                        ${currentVideo ? 'Generando resumen con IA…' : 'Selecciona un video en el panel izquierdo para habilitar el resumen.'}
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                        <button id="refreshVideoSummary" class="keyboard-button" style="max-width:160px">Actualizar</button>
+                    </div>
+                `);
+                card.setAttribute('data-kind', 'video-summary');
+            } else {
+                const header = card.querySelector('h4');
+                if (header) header.textContent = currentVideo ? `Resumen de video — ${currentVideo.label}` : 'Resumen de video';
+                const body = card.querySelector('#videoSummary');
+                if (body) body.textContent = currentVideo ? 'Generando resumen con IA…' : 'Selecciona un video en el panel izquierdo para habilitar el resumen.';
+            }
+            // Si hay video seleccionado, pedir resumen a la IA
+            setTimeout(async () => {
+                const el = card.querySelector('#videoSummary');
+                const btn = card.querySelector('#refreshVideoSummary');
+                const runSummary = async () => {
+                    if (!currentVideo || !el) return;
+                    el.textContent = 'Generando resumen con IA…';
+                    const prompt = `Resume el video actual de YouTube en español con 5 viñetas, tono claro y aplicable. Incluye propósito, puntos clave y una acción práctica.\n\nVideo: ${currentVideo.label} (${currentVideo.url})`;
+                    const response = await processUserMessageWithAI(prompt);
+                    el.textContent = response || 'No fue posible generar el resumen.';
+                };
+                if (btn) btn.addEventListener('click', runSummary);
+                if (currentVideo) await runSummary();
             }, 0);
         },
-        openReport(opts={}) { addCard('Informe', `<div>Preparando informe… ${opts.title||''}</div>`); },
+        openReport(opts={}) { 
+            addCard('Informes y Resúmenes', `
+                <div style="display:grid;gap:16px">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <h5 style="margin:0">📝 Generar informe con IA</h5>
+                        <div style="display:grid;gap:8px">
+                            <textarea placeholder="Pega aquí el texto a resumir o analizar..." style="width:100%;height:100px;padding:10px;border-radius:8px;border:1px solid rgba(68,229,255,.25);background:rgba(255,255,255,.04);color:var(--text-on-dark);font-family:inherit;resize:vertical"></textarea>
+                            <input type="file" accept=".txt,.md,.pdf" style="padding:8px;border-radius:8px;border:1px solid rgba(68,229,255,.25);background:rgba(255,255,255,.04);color:var(--text-on-dark)" placeholder="O sube un archivo">
+                        </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <h5 style="margin:0">🎯 Tipo de informe</h5>
+                        <select style="padding:8px;border-radius:8px;border:1px solid rgba(68,229,255,.25);background:rgba(255,255,255,.04);color:var(--text-on-dark)">
+                            <option>Resumen ejecutivo</option>
+                            <option>Informe técnico</option>
+                            <option>Minuta de reunión</option>
+                            <option>Plan de estudio</option>
+                            <option>Análisis de contenido</option>
+                        </select>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                        <button class="keyboard-button" style="padding:10px;font-size:14px">📄 Generar PDF</button>
+                        <button class="keyboard-button" style="padding:10px;font-size:14px">📝 Generar Markdown</button>
+                    </div>
+                </div>
+            `); 
+        },
         copyPrompts() { copyPrompts('fundamentos', 1); },
         openFAQ() { addCard('FAQ', '<div>Preguntas frecuentes disponibles por sesión.</div>'); },
         openQuizzes() { addCard('Cuestionarios', '<div>Selecciona una sesión y responde.</div>'); }
@@ -461,6 +700,8 @@ function setupEventBusAndUI() {
     EventBus.on('ui:copyPrompts', () => UI.copyPrompts());
     EventBus.on('ui:openFAQ', () => UI.openFAQ());
     EventBus.on('ui:openQuizzes', () => UI.openQuizzes());
+    EventBus.on('ui:openZoom', () => UI.openZoomSessions());
+    EventBus.on('ui:openTeachers', () => UI.openTeachers());
 }
 
 // Reconocimiento de voz básico (si disponible)
@@ -575,15 +816,23 @@ async function uploadAudio(blob) {
     try {
         const form = new FormData();
         form.append('audio', blob, 'voz.webm');
-        const res = await fetch('/api/audio/upload', {
+        const res = await fetch('/api/transcribe', {
             method: 'POST',
-            headers: { 'X-API-Key': getApiKey() },
+            headers: { 'X-API-Key': getApiKey(), ...getUserAuthHeaders(), 'X-Requested-With': 'XMLHttpRequest' },
             body: form
         });
-        if (!res.ok) throw new Error('Fallo subiendo audio');
+        if (!res.ok) throw new Error('No se pudo transcribir el audio');
         const data = await res.json();
-        // Puedes mostrar un mensaje en el chat con el enlace del audio o procesarlo
-        addUserMessage('🎙️ Audio enviado');
+        const text = data.text || '(Transcripción en proceso)';
+        // Mostrar como tarjeta en el panel derecho
+        const card = document.createElement('div');
+        card.className = 'studio-card';
+        card.innerHTML = `<h4 style="margin:0 0 8px 0">Transcripción (AssemblyAI)</h4><div style="white-space:pre-wrap">${text}</div>`;
+        document.getElementById('studioCards')?.prepend(card);
+        // También enviar al chat como mensaje del usuario para poder continuar el flujo
+        if (text && text !== '(Transcripción en proceso)') {
+            addUserMessage(text);
+        }
     } catch (e) {
         console.warn('Error subiendo audio:', e);
     }
@@ -749,7 +998,6 @@ function playBotResponseAudio(text) {
 async function showWelcomeInstructions() {
     await sendBotMessage("📝 ESCRIBE EN EL CHAT\n\nHaz tus preguntas y presiona Enter. Las herramientas ahora están en los paneles laterales (Notas, Glosario, Resumen de audio/video, Informes).");
     await sendBotMessage("🎯 SUGERENCIAS\n\nCuando corresponda, te propondré acciones como 'Enviar a Notas' o 'Crear Informe'; el panel Studio de la derecha las mostrará como tarjetas.");
-    await showSessionGuide();
 }
 
 // Mensaje guía para dirigir a sesiones del curso
@@ -1258,11 +1506,8 @@ async function getDatabaseContext(userQuestion) {
 
 // Función para obtener la API key de forma segura
 function getApiKey() {
-    // En producción, esto debería venir de una sesión segura o token JWT
-    // Por ahora, usamos una clave generada dinámicamente basada en la sesión
-    const sessionKey = sessionStorage.getItem('apiKey') || generateSessionKey();
-    sessionStorage.setItem('apiKey', sessionKey);
-    return sessionKey;
+    // Para desarrollo, retorna una clave fija
+    return 'dev-api-key';
 }
 
 // Función para generar una clave de sesión temporal
@@ -1274,13 +1519,7 @@ function generateSessionKey() {
 
 // Encabezados de autenticación de usuario
 function getUserAuthHeaders() {
-    try {
-        const token = sessionStorage.getItem('authToken') || localStorage.getItem('authToken');
-        const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId');
-        if (token && userId) {
-            return { 'Authorization': `Bearer ${token}`, 'X-User-Id': userId };
-        }
-    } catch (_) {}
+    // Para desarrollo, retorna headers vacíos ya que la autenticación está deshabilitada en el servidor
     return {};
 }
 
@@ -1531,6 +1770,257 @@ function hideTypingIndicator() {
     chatState.isTyping = false;
 }
 
+// ===== Sistema de gestión de sesiones =====
+let sessionManager = {
+    sessions: new Map(),
+    currentSession: null,
+    nextId: 1
+};
+
+function initializeSessionManager() {
+    // Cargar sesiones desde localStorage
+    try {
+        const saved = localStorage.getItem('chat_sessions');
+        if (saved) {
+            const data = JSON.parse(saved);
+            sessionManager.sessions = new Map(data.sessions || []);
+            sessionManager.currentSession = data.currentSession || null;
+            sessionManager.nextId = data.nextId || 1;
+        }
+    } catch (_) {}
+    
+    // Crear sesión inicial si no existe
+    if (sessionManager.sessions.size === 0) {
+        createNewSession();
+    }
+    
+    updateSessionUI();
+}
+
+function saveSessions() {
+    try {
+        const data = {
+            sessions: Array.from(sessionManager.sessions.entries()),
+            currentSession: sessionManager.currentSession,
+            nextId: sessionManager.nextId
+        };
+        localStorage.setItem('chat_sessions', JSON.stringify(data));
+    } catch (_) {}
+}
+
+function createNewSession() {
+    const sessionId = `sess_${sessionManager.nextId++}`;
+    const session = {
+        id: sessionId,
+        title: `Nueva sesión ${sessionManager.sessions.size + 1}`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: []
+    };
+    
+    sessionManager.sessions.set(sessionId, session);
+    sessionManager.currentSession = sessionId;
+    
+    // Limpiar chat actual
+    chatState.conversationHistory = [];
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) chatMessages.innerHTML = '';
+    
+    saveSessions();
+    updateSessionUI();
+    initializeChat(); // Reiniciar chat con mensaje de bienvenida
+}
+
+function switchToSession(sessionId) {
+    if (!sessionManager.sessions.has(sessionId)) return;
+    
+    // Guardar mensajes de sesión actual
+    if (sessionManager.currentSession) {
+        const currentSession = sessionManager.sessions.get(sessionManager.currentSession);
+        if (currentSession) {
+            currentSession.messages = [...chatState.conversationHistory];
+            currentSession.updatedAt = Date.now();
+        }
+    }
+    
+    // Cambiar a nueva sesión
+    sessionManager.currentSession = sessionId;
+    const session = sessionManager.sessions.get(sessionId);
+    
+    // Restaurar mensajes
+    chatState.conversationHistory = [...(session.messages || [])];
+    
+    // Actualizar UI del chat
+    const chatMessages = document.getElementById('chatMessages');
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+        chatState.conversationHistory.forEach(msg => {
+            if (msg.type === 'bot') {
+                addBotMessage(msg.content, null, false, false);
+            } else {
+                addUserMessage(msg.content);
+            }
+        });
+    }
+    
+    saveSessions();
+    updateSessionUI();
+    hideSessionMenu();
+}
+
+function renameSession(sessionId, newTitle) {
+    const session = sessionManager.sessions.get(sessionId);
+    if (session) {
+        session.title = newTitle;
+        session.updatedAt = Date.now();
+        saveSessions();
+        updateSessionUI();
+    }
+}
+
+function duplicateSession(sessionId) {
+    const originalSession = sessionManager.sessions.get(sessionId);
+    if (!originalSession) return;
+    
+    const newSessionId = `sess_${sessionManager.nextId++}`;
+    const duplicatedSession = {
+        id: newSessionId,
+        title: `${originalSession.title} (copia)`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        messages: [...originalSession.messages]
+    };
+    
+    sessionManager.sessions.set(newSessionId, duplicatedSession);
+    saveSessions();
+    updateSessionUI();
+}
+
+function archiveSession(sessionId) {
+    if (sessionManager.sessions.size <= 1) {
+        alert('No puedes archivar la última sesión');
+        return;
+    }
+    
+    sessionManager.sessions.delete(sessionId);
+    
+    // Si era la sesión actual, cambiar a otra
+    if (sessionManager.currentSession === sessionId) {
+        const firstSession = sessionManager.sessions.keys().next().value;
+        if (firstSession) {
+            switchToSession(firstSession);
+        } else {
+            createNewSession();
+        }
+    }
+    
+    saveSessions();
+    updateSessionUI();
+}
+
+function updateSessionUI() {
+    const currentSessionTitle = document.getElementById('currentSessionTitle');
+    const sessionList = document.getElementById('sessionList');
+    
+    if (currentSessionTitle && sessionManager.currentSession) {
+        const currentSession = sessionManager.sessions.get(sessionManager.currentSession);
+        currentSessionTitle.textContent = currentSession?.title || 'Nueva sesión';
+    }
+    
+    if (sessionList) {
+        sessionList.innerHTML = '';
+        sessionManager.sessions.forEach((session, id) => {
+            const item = document.createElement('div');
+            item.className = `session-item ${id === sessionManager.currentSession ? 'active' : ''}`;
+            item.innerHTML = `
+                <div class="session-item-title">${session.title}</div>
+                <div class="session-item-meta">
+                    <span>${new Date(session.updatedAt).toLocaleDateString()}</span>
+                    <span>${session.messages.length} mensajes</span>
+                </div>
+            `;
+            item.addEventListener('click', () => switchToSession(id));
+            sessionList.appendChild(item);
+        });
+    }
+}
+
+function toggleSessionMenu() {
+    const sessionMenu = document.getElementById('sessionMenu');
+    const sessionMenuButton = document.getElementById('sessionMenuButton');
+    
+    if (sessionMenu && sessionMenuButton) {
+        const isOpen = sessionMenu.classList.contains('show');
+        
+        if (isOpen) {
+            hideSessionMenu();
+        } else {
+            showSessionMenu();
+        }
+    }
+}
+
+function showSessionMenu() {
+    const sessionMenu = document.getElementById('sessionMenu');
+    const sessionMenuButton = document.getElementById('sessionMenuButton');
+    
+    if (sessionMenu && sessionMenuButton) {
+        sessionMenu.classList.add('show');
+        sessionMenuButton.classList.add('active');
+        updateSessionUI();
+    }
+}
+
+function hideSessionMenu() {
+    const sessionMenu = document.getElementById('sessionMenu');
+    const sessionMenuButton = document.getElementById('sessionMenuButton');
+    
+    if (sessionMenu && sessionMenuButton) {
+        sessionMenu.classList.remove('show');
+        sessionMenuButton.classList.remove('active');
+    }
+}
+
+function handleSessionAction(action) {
+    const currentSessionId = sessionManager.currentSession;
+    
+    switch (action) {
+        case 'new':
+            createNewSession();
+            hideSessionMenu();
+            break;
+            
+        case 'rename':
+            if (currentSessionId) {
+                const currentSession = sessionManager.sessions.get(currentSessionId);
+                const newTitle = prompt('Nuevo título para la sesión:', currentSession?.title || '');
+                if (newTitle && newTitle.trim()) {
+                    renameSession(currentSessionId, newTitle.trim());
+                }
+            }
+            break;
+            
+        case 'duplicate':
+            if (currentSessionId) {
+                duplicateSession(currentSessionId);
+            }
+            break;
+            
+        case 'archive':
+            if (currentSessionId && confirm('¿Estás seguro de que quieres archivar esta sesión?')) {
+                archiveSession(currentSessionId);
+                hideSessionMenu();
+            }
+            break;
+    }
+}
+
+// Inicializar sistema de sesiones al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    initializeSessionManager();
+    setupResizableRight();
+});
+
 // Exportar funciones para uso externo
 window.Chatbot = {
     sendMessage,
@@ -1543,5 +2033,256 @@ window.Chatbot = {
     playWelcomeAudio,
     // Navegación de sesiones
     showSessionsForTopic,
-    openTopicSession
+    openTopicSession,
+    // Gestión de sesiones
+    sessionManager,
+    createNewSession,
+    switchToSession,
+    renameSession,
+    duplicateSession,
+    archiveSession
 }; 
+
+// Render del selector de sesiones/módulos dentro del menú
+function renderSessionPicker() {
+    const picker = document.getElementById('sessionPicker');
+    if (!picker) return;
+    const html = Object.entries(COURSE_SESSIONS).map(([num, s]) => `
+        <button class=\"session-item\" data-session=\"${num}\" data-module=\"0\">\n            <span class=\"module-index\">S${num}</span>\n            <span class=\"module-title\">${s.title}</span>\n        </button>
+    `).join('');
+    picker.innerHTML = `<div class=\"module-list\">${html}</div>`;
+}
+
+// Barra de redimensionado del panel izquierdo
+function setupResizableLeft() {
+    const resizer = document.getElementById('leftResizer');
+    if (!resizer) return;
+    let startX = 0;
+    let startWidth = 0;
+    const onMove = (e) => {
+        const delta = (e.clientX || (e.touches && e.touches[0].clientX) || 0) - startX;
+        // Evitar solaparse con el panel derecho: ancho total minus right-col mín.
+        const rightCol = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--right-col') || '360', 10);
+        const maxByLayout = Math.max(220, Math.min(520, startWidth + delta));
+        const maxAllowed = Math.min(maxByLayout, window.innerWidth - rightCol - 400); // deja espacio mínimo para el chat
+        const newWidth = Math.max(220, maxAllowed);
+        document.documentElement.style.setProperty('--left-col', newWidth + 'px');
+        try { localStorage.setItem('ui_left_col', String(newWidth)); } catch(_) {}
+    };
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+    };
+    const onDown = (e) => {
+        e.preventDefault();
+        startX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+        const leftCol = getComputedStyle(document.documentElement).getPropertyValue('--left-col').trim();
+        startWidth = parseInt(leftCol || '300', 10);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+    };
+    resizer.addEventListener('mousedown', onDown);
+    resizer.addEventListener('touchstart', onDown, { passive: false });
+
+    // Restaurar último ancho
+    try {
+        const saved = parseInt(localStorage.getItem('ui_left_col') || '0', 10);
+        if (saved) document.documentElement.style.setProperty('--left-col', saved + 'px');
+    } catch(_) {}
+}
+
+// Barra de redimensionado del panel derecho
+function setupResizableRight() {
+    const resizer = document.getElementById('rightResizer');
+    if (!resizer) return;
+    let startX = 0;
+    let startWidth = 0;
+    const onMove = (e) => {
+        const x = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+        // Como el resizer está en el borde interno, mover a la izquierda (x menor) debe AUMENTAR el ancho
+        const delta = startX - x;
+        const newWidth = Math.max(260, Math.min(520, startWidth + delta));
+        document.documentElement.style.setProperty('--right-col', newWidth + 'px');
+        try { localStorage.setItem('ui_right_col', String(newWidth)); } catch(_) {}
+    };
+    const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+    };
+    const onDown = (e) => {
+        e.preventDefault();
+        startX = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+        const rightCol = getComputedStyle(document.documentElement).getPropertyValue('--right-col').trim();
+        startWidth = parseInt(rightCol || '360', 10);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+    };
+    resizer.addEventListener('mousedown', onDown);
+    resizer.addEventListener('touchstart', onDown, { passive: false });
+
+    // Restaurar último ancho
+    try {
+        const saved = parseInt(localStorage.getItem('ui_right_col') || '0', 10);
+        if (saved) document.documentElement.style.setProperty('--right-col', saved + 'px');
+    } catch(_) {}
+}
+
+// ===== Videos integrados en panel izquierdo =====
+let currentVideo = null; // { label, url, id }
+function setupVideoPicker() {
+    try {
+        // Toggle colapsable
+        const sec = document.getElementById('videosSection');
+        const btnToggle = document.getElementById('videosToggle');
+        if (sec && btnToggle) {
+            btnToggle.addEventListener('click', () => {
+                const isOpen = sec.classList.toggle('open');
+                btnToggle.setAttribute('aria-expanded', String(isOpen));
+            });
+        }
+
+        // Botones de selección
+        document.querySelectorAll('.video-select').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const label = btn.getAttribute('data-video-label');
+                const url = new URL(btn.getAttribute('data-video-url'));
+                let id = url.searchParams.get('v');
+                if (!id && url.pathname) { id = url.pathname.split('/').pop(); }
+                currentVideo = { label, url: url.toString(), id };
+                const mount = document.getElementById('leftVideoPlayerContainer');
+                if (mount) {
+                    mount.innerHTML = `<iframe src="https://www.youtube.com/embed/${id}" allowfullscreen title="${label}"></iframe>`;
+                    mount.classList.add('active');
+                }
+                // Habilitar el tile de resumen de video
+                const tile = document.getElementById('videoSummaryTile');
+                if (tile) tile.classList.remove('disabled');
+                // Si ya hay una tarjeta de resumen abierta, refrescar su contenido
+                const summaryCard = document.querySelector('.studio-card[data-kind="video-summary"]');
+                if (summaryCard) {
+                    const text = summaryCard.querySelector('#videoSummary');
+                    if (text) text.textContent = 'Generando resumen con IA…';
+                    EventBus.emit('ui:openVideo');
+                }
+            });
+        });
+ 
+        // Hook para botón de resumen desde el panel derecho
+        const tile = document.getElementById('videoSummaryTile');
+        if (tile) {
+            tile.addEventListener('click', () => {
+                // Abrir la tarjeta de resumen dentro del panel derecho
+                EventBus.emit('ui:openVideo');
+            });
+        }
+
+        // Toggle glosario en panel izquierdo
+        const gsec = document.getElementById('glossarySection');
+        const gtoggle = document.getElementById('glossaryToggle');
+        if (gsec && gtoggle) {
+            gtoggle.addEventListener('click', () => {
+                const isOpen = gsec.classList.toggle('open');
+                gtoggle.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) renderLeftGlossary();
+            });
+        }
+
+        // Livestream: Meet incrustado (si el navegador lo permite)
+        const lsec = document.getElementById('livestreamSection');
+        const ltoggle = document.getElementById('livestreamToggle');
+        if (lsec && ltoggle) {
+            ltoggle.addEventListener('click', () => {
+                const isOpen = lsec.classList.toggle('open');
+                ltoggle.setAttribute('aria-expanded', String(isOpen));
+                if (isOpen) {
+                    const liveMount = document.getElementById('leftLivestreamPlayer');
+                    const notice = document.getElementById('livestreamNotice');
+                    if (liveMount) {
+                        liveMount.innerHTML = '';
+                        liveMount.classList.add('active');
+                        // Zoom Web Client (iframe a zoom.us/wc) — requiere meeting ID y passcode
+                        // Para demo incrustamos el web client con parámetros que el host comparta (meeting id y pwd)
+                        // Nota: Para producción se recomienda Zoom Web SDK con firma generada en backend
+                        const meetingId = (window.ZOOM_MEETING_ID || '').replaceAll('-', '');
+                        const pwd = window.ZOOM_MEETING_PWD || '';
+                        if (!meetingId) {
+                            if (notice) {
+                                notice.style.display = 'block';
+                                notice.textContent = 'Configura window.ZOOM_MEETING_ID y window.ZOOM_MEETING_PWD para cargar el Web Client de Zoom dentro de la app.';
+                            }
+                            return;
+                        }
+                        const zoomUrl = `https://zoom.us/wc/${meetingId}/join?pwd=${encodeURIComponent(pwd)}`;
+                        const iframe = document.createElement('iframe');
+                        iframe.src = zoomUrl;
+                        iframe.allow = 'camera; microphone; display-capture; clipboard-write; autoplay; fullscreen;';
+                        iframe.referrerPolicy = 'no-referrer';
+                        iframe.style.width = '100%';
+                        iframe.style.height = '100%';
+                        iframe.style.border = '0';
+                        // Intento cargar; si falla por X-Frame-Options, aviso
+                        const timer = setTimeout(() => {
+                            if (notice) {
+                                notice.style.display = 'block';
+                                notice.textContent = 'No se pudo cargar el cliente Web de Zoom embebido. Haz clic aquí para abrirlo en esta misma pestaña.';
+                                notice.onclick = () => { window.location.href = zoomUrl; };
+                            }
+                        }, 2000);
+                        iframe.onload = () => { clearTimeout(timer); if (notice) notice.style.display = 'none'; };
+                        liveMount.appendChild(iframe);
+                    }
+                }
+            });
+        }
+    } catch (_) {}
+}
+
+function renderLeftGlossary() {
+    const mount = document.getElementById('glossaryLeftMount');
+    if (!mount) return;
+    mount.innerHTML = `
+        <div class="glossary-header"><h5 style="margin:0">Glosario de Términos</h5></div>
+        <div class="glossary-subtitle">Selecciona una letra:</div>
+        <div class="alphabet-grid" id="gAlpha"></div>
+        <div class="glossary-results" id="gResults"><div class="glossary-empty">Selecciona una letra</div></div>
+    `;
+    const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const gAlpha = mount.querySelector('#gAlpha');
+    alpha.forEach(letter => {
+        const b = document.createElement('button');
+        b.className = 'alpha-btn'; b.textContent = letter;
+        b.addEventListener('click', () => {
+            const entries = GLOSSARY[letter] || [];
+            const gRes = mount.querySelector('#gResults');
+            if (!entries.length) {
+                gRes.innerHTML = `<div class="glossary-empty">No hay términos para la letra ${letter}</div>`;
+            } else {
+                gRes.innerHTML = entries.map(e => `
+                    <div class="glossary-item"><div class="term">${e.term}</div><div class="def">${e.def}</div></div>
+                `).join('');
+            }
+        });
+        gAlpha.appendChild(b);
+    });
+}
+
+function setupAvatarLightbox() {
+    const img = document.getElementById('botAvatarImg');
+    const lightbox = document.getElementById('avatarLightbox');
+    const lbImg = document.getElementById('avatarLightboxImg');
+    const lbClose = document.getElementById('avatarLightboxClose');
+    if (!img || !lightbox || !lbImg) return;
+    const open = () => { lightbox.classList.add('show'); };
+    const close = () => { lightbox.classList.remove('show'); };
+    img.addEventListener('click', open);
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox || e.target === lbClose) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+}

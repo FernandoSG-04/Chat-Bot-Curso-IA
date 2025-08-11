@@ -21,14 +21,28 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://unpkg.com'],
             // En desarrollo permitimos inline scripts (onclick) para compatibilidad rápida
             scriptSrc: DEV_MODE ? ["'self'", "'unsafe-inline'"] : ["'self'"],
             // Permitir atributos inline (onclick) explícitamente en CSP nivel 3 durante desarrollo
             scriptSrcAttr: DEV_MODE ? ["'unsafe-inline'"] : [],
+            // Permitir iframes de YouTube/Vimeo para reproducir videos
+            frameSrc: [
+                "'self'",
+                'https://www.youtube.com',
+                'https://www.youtube-nocookie.com',
+                'https://player.vimeo.com'
+            ],
+            childSrc: [
+                "'self'",
+                'https://www.youtube.com',
+                'https://www.youtube-nocookie.com',
+                'https://player.vimeo.com'
+            ],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'", 'https://api.openai.com'],
-            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+            mediaSrc: ["'self'", 'blob:', 'data:', 'https:'],
+            fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://unpkg.com', 'data:'],
             frameAncestors: ["'none'"],
             objectSrc: ["'none'"]
         }
@@ -60,9 +74,14 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Servir prompts para depuración/inspección (protegido por API en endpoints abajo)
 app.use('/prompts', express.static(path.join(__dirname, 'prompts')));
 
-// Redirigir la raíz al inicio de sesión
+// Página de bienvenida (antes del inicio de sesión)
 app.get('/', (req, res) => {
-    res.redirect('/login/login.html');
+    try {
+        res.sendFile(path.join(__dirname, 'src', 'welcome.html'));
+    } catch (_) {
+        // Fallback en caso de que no exista la landing: redirigir a login
+        res.redirect('/login/login.html');
+    }
 });
 
 // Pool de conexiones a PostgreSQL
@@ -199,6 +218,47 @@ const upload = multer({
         const allowed = ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/wav', 'video/webm'];
         if (allowed.includes(file.mimetype)) return cb(null, true);
         cb(new Error('Tipo de archivo no permitido'));
+    }
+});
+
+// Registro de usuarios (simple) — requiere BD
+app.post('/api/register', async (req, res) => {
+    try {
+        if (!pool) {
+            return res.status(500).json({ error: 'Base de datos no configurada' });
+        }
+        const { full_name, username, email, password } = req.body || {};
+        if (!full_name || !username) {
+            return res.status(400).json({ error: 'Nombre completo y usuario son requeridos' });
+        }
+        // Intentar detectar si existe la columna password_hash en users
+        let hasPassword = false;
+        try {
+            const col = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash' LIMIT 1");
+            hasPassword = col.rows.length > 0;
+        } catch (_) {}
+
+        let query, params;
+        if (hasPassword && password) {
+            // Hash básico (bcryptjs)
+            const bcrypt = require('bcryptjs');
+            const hash = await bcrypt.hash(String(password), 10);
+            query = `INSERT INTO users (full_name, username, email, password_hash) VALUES ($1,$2,$3,$4) RETURNING id, username, full_name, email`;
+            params = [full_name, username, email || null, hash];
+        } else {
+            query = `INSERT INTO users (full_name, username, email) VALUES ($1,$2,$3) RETURNING id, username, full_name, email`;
+            params = [full_name, username, email || null];
+        }
+
+        const result = await pool.query(query, params);
+        res.status(201).json({ user: result.rows[0] });
+    } catch (error) {
+        console.error('Error registrando usuario:', error);
+        // Duplicado de username
+        if (String(error.message||'').includes('duplicate')) {
+            return res.status(409).json({ error: 'El usuario ya existe' });
+        }
+        res.status(500).json({ error: 'Error registrando usuario' });
     }
 });
 

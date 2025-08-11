@@ -8,46 +8,102 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     <meta name="description" content="Chatbot educativo inteligente para proporcionar una experiencia educativa interactiva y personalizada">
     <meta name="keywords" content="chatbot, educativo, ia, inteligencia artificial, curso">
     <meta name="author" content="Tu Nombre">
 </head>
-<body>
-    <div class="telegram-container">
-        <div class="chat-header">
-            <div class="bot-avatar">🤖</div>
-            <div class="chat-info">
-                <h3>COACH IA</h3>
-                <p>En línea</p>
+<body class="layout-notebook">
+    <div class="layout-3panels">
+        <aside class="sidebar-left" id="sidebarLeft">
+            <div class="sidebar-header">
+                <h3>Herramientas</h3>
+                <button class="collapse-btn" id="collapseLeft" title="Ocultar/mostrar">⟨⟩</button>
             </div>
-        </div>
+            <nav class="tool-list">
+                <button class="tool-btn" data-action="open-audio"><i class='bx bx-microphone'></i><span>Resumen de audio</span></button>
+                <div class="tool-sep"></div>
+                <button class="tool-btn" data-action="copy-prompts"><i class='bx bx-copy'></i><span>Copiar prompts</span></button>
+                <button class="tool-btn" data-action="open-quizzes"><i class='bx bx-list-check'></i><span>Cuestionarios</span></button>
+                <button class="tool-btn" data-action="open-faq"><i class='bx bx-help-circle'></i><span>Preguntas frecuentes</span></button>
+            </nav>
+        </aside>
 
-        <div class="chat-messages" id="chatMessages">
-            <!-- Los mensajes se generarán dinámicamente aquí -->
-        </div>
+        <main class="chat-main">
+            <div class="telegram-container">
+                <div class="chat-header">
+                    <div class="bot-avatar"><i class='bx bx-bot'></i></div>
+                    <div class="chat-info">
+                        <h3>COACH IA</h3>
+                        <p>En línea</p>
+                    </div>
+                </div>
 
-        <div class="chat-input">
-            <div class="input-container" id="inputContainer">
-                <button id="audioToggle" class="audio-toggle" aria-label="Activar/Desactivar audio" title="Audio">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/>
-                        <path d="M14 10a4 4 0 010 4M14 6a8 8 0 010 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Los mensajes se generarán dinámicamente aquí -->
+                </div>
+
+                <div class="chat-input">
+                    <div class="input-container" id="inputContainer">
+                        <button id="audioToggle" class="audio-toggle" aria-label="Activar/Desactivar audio" title="Audio">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor"/>
+                                <path d="M14 10a4 4 0 010 4M14 6a8 8 0 010 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                        <input type="text" id="messageInput" placeholder="Escribe tu mensaje..." maxlength="500">
+                        <button id="actionButton" class="action-button" aria-label="Hablar" title="Hablar / Enviar">
+                            <svg class="mic-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3z" fill="currentColor"/>
+                                <path d="M5 11a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                            <svg class="send-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="studio-right" id="studioRight">
+            <div class="studio-header">
+                <h3>Studio</h3>
+                <button class="collapse-btn" id="collapseRight" title="Ocultar/mostrar">⟨⟩</button>
+            </div>
+            <div class="studio-tiles" aria-label="Accesos principales">
+                <button class="tile" data-action="open-audio" title="Resumen de audio">
+                    <i class='bx bx-analyse'></i>
+                    <span>Resumen de audio</span>
                 </button>
-                <input type="text" id="messageInput" placeholder="Escribe tu mensaje..." maxlength="500">
-                <button id="actionButton" class="action-button" aria-label="Hablar" title="Hablar / Enviar">
-                    <svg class="mic-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 14a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v4a3 3 0 0 0 3 3z" fill="currentColor"/>
-                        <path d="M5 11a7 7 0 0 0 14 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M12 18v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <svg class="send-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/>
-                    </svg>
+                <button class="tile" data-action="open-video" title="Resumen de video">
+                    <i class='bx bx-movie-play'></i>
+                    <span>Resumen de video</span>
+                </button>
+                <button class="tile" data-action="open-notes" title="Notas">
+                    <i class='bx bx-notepad'></i>
+                    <span>Notas</span>
+                </button>
+                <button class="tile" data-action="open-report" title="Informes">
+                    <i class='bx bx-file'></i>
+                    <span>Informes</span>
+                </button>
+                <button class="tile full" data-action="open-glossary" title="Glosario">
+                    <i class='bx bx-book-open'></i>
+                    <span>Glosario</span>
                 </button>
             </div>
-        </div>
+            <nav class="studio-rail" aria-label="Accesos Studio (colapsado)">
+                <button class="rail-btn" data-action="open-audio" title="Audio"><i class='bx bx-microphone'></i></button>
+                <button class="rail-btn" data-action="open-video" title="Video"><i class='bx bx-movie-play'></i></button>
+                <button class="rail-btn" data-action="open-report" title="Informe"><i class='bx bx-file'></i></button>
+                <button class="rail-btn" data-action="open-notes" title="Notas"><i class='bx bx-notepad'></i></button>
+                <button class="rail-btn" data-action="open-glossary" title="Glosario"><i class='bx bx-book-open'></i></button>
+            </nav>
+            <div class="studio-cards" id="studioCards"></div>
+        </aside>
     </div>
 
     <script src="scripts/main.js"></script>

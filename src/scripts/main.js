@@ -48,22 +48,23 @@ const inputContainer = document.getElementById('inputContainer');
 function getBotAvatarHTML() {
     return `
         <div class="msg-avatar bot">
-            <div class="avatar-circle">🤖</div>
+            <div class="avatar-circle"><i class='bx bx-bot'></i></div>
         </div>
     `;
 }
 
 function getUserAvatarHTML() {
-    // Si en el futuro hay foto del usuario, podríamos traerla de session/local
     return `
         <div class="msg-avatar user">
-            <div class="avatar-circle">🧑</div>
+            <div class="avatar-circle"><i class='bx bx-user'></i></div>
         </div>
     `;
 }
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', function() {
+    // EventBus y UI API para el nuevo layout tipo NotebookLM
+    setupEventBusAndUI();
     initializeSecurity();
     initializeAudio();
     loadAudioPreference();
@@ -197,7 +198,7 @@ function initializeChat() {
 
         await sendBotMessage(greeting, null, false, true);
         await showWelcomeInstructions();
-        // No exigir nombre/apellido al inicio; pasar directo al menú
+        // Menú inline eliminado: ahora el panel izquierdo contiene las herramientas
     })();
 }
 
@@ -335,6 +336,48 @@ function setupEventListeners() {
         }
     });
 
+    // Conectar botones del panel izquierdo (tool-list)
+    try {
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.getAttribute('data-action');
+                switch(action) {
+                    case 'open-notes': EventBus.emit('ui:openNotes'); break;
+                    case 'open-glossary': EventBus.emit('ui:openGlossary'); break;
+                    case 'open-audio': EventBus.emit('ui:openAudio'); break;
+                    case 'open-video': EventBus.emit('ui:openVideo'); break;
+                    case 'open-report': EventBus.emit('ui:openReport'); break;
+                    case 'copy-prompts': EventBus.emit('ui:copyPrompts'); break;
+                    case 'open-quizzes': EventBus.emit('ui:openQuizzes'); break;
+                    case 'open-faq': EventBus.emit('ui:openFAQ'); break;
+                }
+            });
+        });
+        // Toggles de colapso
+        const root = document.body;
+        document.getElementById('collapseLeft')?.addEventListener('click', () => {
+            root.classList.toggle('left-collapsed');
+        });
+        document.getElementById('collapseRight')?.addEventListener('click', () => {
+            root.classList.toggle('right-collapsed');
+        });
+        // Acciones del rail (si visible)
+        const railButtons = document.querySelectorAll('.studio-rail .rail-btn');
+        if (railButtons && railButtons.length) {
+            railButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const action = btn.getAttribute('data-action');
+                    switch(action) {
+                        case 'open-audio': EventBus.emit('ui:openAudio'); break;
+                        case 'open-video': EventBus.emit('ui:openVideo'); break;
+                        case 'open-report': EventBus.emit('ui:openReport'); break;
+                        case 'open-notes': EventBus.emit('ui:openNotes'); break;
+                    }
+                });
+            });
+        }
+    } catch(_){}
+
     // Forzar primer estado
     if (messageInput.value.trim().length > 0) {
         inputContainer.classList.add('input-has-text');
@@ -346,6 +389,78 @@ function setupEventListeners() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
     });
+}
+
+// ===== Nuevo: EventBus y UI API =====
+function setupEventBusAndUI() {
+    if (window.EventBus) return;
+    const listeners = {};
+    window.EventBus = {
+        on: (evt, cb) => { (listeners[evt] ||= []).push(cb); },
+        off: (evt, cb) => { listeners[evt] = (listeners[evt]||[]).filter(f => f!==cb); },
+        emit: (evt, payload) => { (listeners[evt]||[]).forEach(f => { try { f(payload); } catch(_){} }); }
+    };
+
+    // Studio helpers
+    const cardsEl = () => document.getElementById('studioCards');
+    const addCard = (title, contentHTML) => {
+        const el = document.createElement('div');
+        el.className = 'studio-card';
+        el.innerHTML = `<h4 style="margin:0 0 8px 0">${title}</h4>` + contentHTML;
+        cardsEl()?.prepend(el);
+        return el;
+    };
+
+    window.UI = {
+        openNotes(initial = '') { addCard('Notas', `<textarea style="width:100%;height:160px">${initial}</textarea>`); },
+        openGlossary() { addCard('Glosario', `<div id="glossaryPanelMount">Usa las letras para explorar términos.</div>`); showGlossary(); },
+        openAudioSummary() { addCard('Resumen de audio', '<div>Sube audio desde el botón de micrófono y lo resumiré aquí.</div>'); },
+        openVideoSummary() {
+            addCard('Resumen de video', `
+                <div style="display:grid;gap:8px">
+                    <input id="videoUrlInput" type="url" placeholder="Pega la URL de YouTube/Vimeo" style="padding:8px;border-radius:8px;border:1px solid rgba(68,229,255,.25);background:rgba(255,255,255,.02);color:var(--text-on-dark)">
+                    <button id="loadVideoBtn" class="keyboard-button" style="max-width:160px">Cargar y resumir</button>
+                    <div id="videoSummary" style="color:var(--text-muted)">Pega la URL del video para generar un resumen.</div>
+                    <div id="videoPlayer" style="aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden"></div>
+                </div>
+            `);
+            // Comportamiento básico: insertar iframe si es YouTube y placeholder de resumen
+            setTimeout(() => {
+                const urlInput = document.getElementById('videoUrlInput');
+                const loadBtn = document.getElementById('loadVideoBtn');
+                const player = document.getElementById('videoPlayer');
+                const summary = document.getElementById('videoSummary');
+                if (!loadBtn) return;
+                loadBtn.addEventListener('click', async () => {
+                    const url = (urlInput?.value||'').trim();
+                    if (!url) return;
+                    // Render rápido de iframe YouTube si aplica
+                    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                        const id = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+                        player.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen></iframe>`;
+                    } else {
+                        player.innerHTML = `<a href="${url}" target="_blank" rel="noopener noreferrer">Abrir video</a>`;
+                    }
+                    // Placeholder: llamar IA para resumen cuando esté disponible; por ahora, mensaje educativo
+                    summary.textContent = 'Generaré un resumen del video (si hay transcripción disponible). Puedes indicarme qué secciones te interesan.';
+                });
+            }, 0);
+        },
+        openReport(opts={}) { addCard('Informe', `<div>Preparando informe… ${opts.title||''}</div>`); },
+        copyPrompts() { copyPrompts('fundamentos', 1); },
+        openFAQ() { addCard('FAQ', '<div>Preguntas frecuentes disponibles por sesión.</div>'); },
+        openQuizzes() { addCard('Cuestionarios', '<div>Selecciona una sesión y responde.</div>'); }
+    };
+
+    // Wiring: eventos -> UI
+    EventBus.on('ui:openNotes', () => UI.openNotes());
+    EventBus.on('ui:openGlossary', () => UI.openGlossary());
+    EventBus.on('ui:openAudio', () => UI.openAudioSummary());
+    EventBus.on('ui:openVideo', () => UI.openVideoSummary());
+    EventBus.on('ui:openReport', () => UI.openReport());
+    EventBus.on('ui:copyPrompts', () => UI.copyPrompts());
+    EventBus.on('ui:openFAQ', () => UI.openFAQ());
+    EventBus.on('ui:openQuizzes', () => UI.openQuizzes());
 }
 
 // Reconocimiento de voz básico (si disponible)
@@ -628,43 +743,38 @@ function playBotResponseAudio(text) {
 }
 
 // Mostrar menú principal
-function showMainMenu() {
-    const keyboard = `
-        <div class="inline-keyboard">
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('fundamentos')">📚 Temas del Curso</button>
-            </div>
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="Chatbot.showExercises()">🧠 Ejercicios Prácticos</button>
-            </div>
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="Chatbot.showHelp()">❓ Ayuda</button>
-            </div>
-            <div class="keyboard-row">
-                <button class="keyboard-button" onclick="Chatbot.showGlossary()">📖 Glosario</button>
-            </div>
-        </div>
-    `;
-    
-    // Evitar duplicados: comprobar último mensaje si ya es un menú
-    const last = chatState.conversationHistory[chatState.conversationHistory.length - 1];
-    const header = '¡Perfecto! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:';
-    const name = chatState.userName ? `, ${chatState.userName}` : '';
-    const text = `¡Perfecto${name}! 🎯\n\nAquí tienes el menú principal. Puedes navegar por las diferentes secciones:`;
-    if (!last || typeof last.content !== 'string' || !last.content.includes('Aquí tienes el menú principal')) {
-        addBotMessage(text, keyboard, false, false);
-    }
-    chatState.currentState = 'main_menu';
-}
+// showMainMenu eliminado; navegación ahora desde el panel izquierdo/Studio
 
 // Mostrar instrucciones de bienvenida divididas
 async function showWelcomeInstructions() {
-    await sendBotMessage("📝 INSTRUCCIONES DE ESCRITURA\n\nPuedes escribir cualquier pregunta y presionar Enter o hacer clic en el botón enviar.");
-    await sendBotMessage("❓ TIPOS DE PREGUNTAS\n\nPuedes preguntarme sobre:\n• Temas del curso (IA, machine learning, deep learning)\n• Explicaciones de conceptos\n• Ejercicios prácticos\n• Dudas específicas sobre el contenido");
-    await sendBotMessage("⌨️ COMANDOS ESPECIALES\n\n• 'ayuda' - Para ver estas instrucciones nuevamente\n• 'temas' - Para ver los temas disponibles\n• 'ejercicios' - Para solicitar ejercicios prácticos");
-    await sendBotMessage("📊 HISTORIAL DE CONVERSACIONES\n\nTodas las conversaciones se guardan automáticamente para tu seguimiento.");
-    // Mostrar el menú principal al final de toda la información
-    showMainMenu();
+    await sendBotMessage("📝 ESCRIBE EN EL CHAT\n\nHaz tus preguntas y presiona Enter. Las herramientas ahora están en los paneles laterales (Notas, Glosario, Resumen de audio/video, Informes).");
+    await sendBotMessage("🎯 SUGERENCIAS\n\nCuando corresponda, te propondré acciones como 'Enviar a Notas' o 'Crear Informe'; el panel Studio de la derecha las mostrará como tarjetas.");
+    await showSessionGuide();
+}
+
+// Mensaje guía para dirigir a sesiones del curso
+async function showSessionGuide() {
+    const guide = `
+        <div class="inline-keyboard">
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('fundamentos')">🤖 Fundamentos</button>
+                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('ml')">📊 ML</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('deep')">🧠 Deep</button>
+                <button class="keyboard-button" onclick="Chatbot.showSessionsForTopic('aplicaciones')">🎯 Aplicaciones</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('fundamentos', 1)">📘 Sesión 1</button>
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('fundamentos', 2)">📗 Sesión 2</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('fundamentos', 3)">📙 Sesión 3</button>
+                <button class="keyboard-button" onclick="Chatbot.openTopicSession('fundamentos', 4)">📕 Sesión 4</button>
+            </div>
+        </div>
+    `;
+    await sendBotMessage("🏁 Elige un tema o entra directo por sesión (Fundamentos):", guide, false, false);
 }
 
 // Mostrar temas
@@ -1348,13 +1458,7 @@ function generateResponse(message) {
 }
 
 // Funciones de utilidad para botones
-function getBackButton() {
-    return `
-        <div class="keyboard-row">
-            <button class="keyboard-button" onclick="showMainMenu()">⬅️ Menú Principal</button>
-        </div>
-    `;
-}
+function getBackButton() { return ``; }
 
 // Scroll al final del chat
 function scrollToBottom() {
@@ -1437,16 +1541,7 @@ window.Chatbot = {
     getAudioStatus,
     setAudioVolume,
     playWelcomeAudio,
-    // Exponer funciones usadas por botones inline
-    showTopics,
-    showTopic,
+    // Navegación de sesiones
     showSessionsForTopic,
-    openTopicSession,
-    showCollaborativeActivities,
-    startQuiz,
-    showFAQ,
-    copyPrompts,
-    showExercises,
-    showHelp,
-    showGlossary
+    openTopicSession
 }; 

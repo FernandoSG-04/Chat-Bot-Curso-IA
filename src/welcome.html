@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bienvenida — Aprende y Aplica IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="styles/main.css" />
+  <style>
+    :root { --hero-max: 1100px; }
+    body { padding: 0; }
+    .landing-hero {
+      background: radial-gradient(1200px 500px at 20% 0%, rgba(68, 229, 255, 0.08), transparent 60%),
+                  radial-gradient(800px 400px at 80% 100%, rgba(0, 119, 166, 0.12), transparent 60%),
+                  linear-gradient(160deg, #0A0A0A 0%, #0A0A0A 100%);
+      padding-bottom: 30px;
+    }
+    .brandbar { display:flex; align-items:center; justify-content:center; height: 80px; border-bottom: 1px solid rgba(68,229,255,.15); }
+    .brandbar h1 { font-size: 22px; letter-spacing:.4px; }
+    .brand-accent { color: var(--color-primary); }
+    .content { max-width: var(--hero-max); margin: 0 auto; padding: 20px; }
+    .welcome-grid { display:grid; gap: 24px; grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+    .welcome-card { background: rgba(10,10,10,0.7); border: 1px solid rgba(68,229,255,0.18); border-radius: 14px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .welcome-title { display:flex; align-items:center; gap:10px; margin: 14px 0 6px; }
+    .bullet { font-size: 18px; }
+    .video-wrap { aspect-ratio: 16/9; width: 100%; border-radius: 14px; overflow: hidden; box-shadow: 0 12px 36px rgba(0,0,0,0.35); border: 1px solid rgba(68,229,255,.18); }
+    iframe { width:100%; height:100%; border:0; }
+    .quote { background: rgba(255,255,255,0.04); border: 1px solid rgba(68,229,255,0.15); border-radius: 10px; padding: 12px 14px; color: var(--text-muted); font-style: italic; }
+    .cta-row { display:flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .cta-row a { text-decoration: none; }
+    .register-card { background: rgba(10,10,10,0.7); border: 1px solid rgba(68,229,255,0.2); border-radius: 14px; padding: 18px; }
+    .reg-grid { display:grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+    .reg-grid .full { grid-column: 1 / -1; }
+    .input { width: 100%; padding: 10px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(68,229,255,0.25); border-radius: 10px; color: var(--text-on-dark); font-family: var(--font-body); }
+    .submit { background: linear-gradient(135deg, var(--color-primary), var(--color-secondary)); color: var(--color-bg-1); border: 0; border-radius: 10px; padding: 12px 14px; font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(68,229,255,.25); }
+    .note { color: var(--text-muted); font-size: 14px; margin-top: 8px; }
+    .footer { margin-top: 24px; padding: 16px 0; color: var(--text-muted); text-align: center; border-top: 1px solid rgba(68,229,255,.15); }
+    @media (max-width: 980px) { .welcome-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="landing">
+  <div class="landing-hero">
+    <div class="brandbar">
+      <h1 class="brand">
+        <span class="brand-accent">APRENDE</span> Y APLICA IA
+      </h1>
+    </div>
+
+    <div class="content">
+      <h2 style="margin:16px 0 8px">Bienvenida</h2>
+      <div class="quote">💡 "La inteligencia artificial no te va a reemplazar... pero alguien que la sepa usar, sí."</div>
+
+      <div class="welcome-grid" style="margin-top:18px">
+        <div class="welcome-card">
+          <div class="welcome-title">
+            <i class='bx bx-rocket' style="font-size:22px"></i>
+            <h3 style="margin:0">Bienvenido/a a Experto en IA para Profesionales</h3>
+          </div>
+          <p class="note">Conviértete en capacidad aplicada: fundamentos claros, hábitos de aprendizaje y herramientas que importan.</p>
+          <div class="video-wrap" aria-label="Video de bienvenida">
+            <iframe 
+              src="https://www.youtube.com/embed/y7xsTTRmk88" 
+              title="YouTube video player" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="login/login.html"><i class='bx bx-log-in'></i>&nbsp;Iniciar Sesión</a>
+            <a class="btn btn-outline" href="#registro"><i class='bx bx-user-plus'></i>&nbsp;Registrarme</a>
+          </div>
+        </div>
+
+        <div id="registro" class="register-card">
+          <h3 style="margin-top:0">Crear cuenta</h3>
+          <form id="registerForm" autocomplete="on">
+            <div class="reg-grid">
+              <input class="input" id="full_name" name="full_name" placeholder="Nombre y apellido" required />
+              <input class="input" id="username" name="username" placeholder="Usuario" required />
+              <input class="input full" id="email" name="email" type="email" placeholder="Email (opcional)" />
+              <input class="input full" id="password" name="password" type="password" placeholder="Contraseña (si tu tabla tiene password_hash)" />
+            </div>
+            <div style="display:flex; gap:10px; margin-top:12px">
+              <button type="submit" class="submit">Registrarme</button>
+              <a class="btn btn-outline" href="login/login.html">Ya tengo cuenta</a>
+            </div>
+            <div id="regMsg" class="note"></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="welcome-card" style="margin-top:18px">
+        <p style="margin:0 0 6px 0"><strong>En Aprende y Aplica IA, te acompañamos paso a paso a:</strong></p>
+        <ul style="margin-left:18px; margin-top:8px; line-height:1.7">
+          <li>Entender los fundamentos sin complicarte</li>
+          <li>Descubrir las herramientas que realmente importan</li>
+          <li>Aplicarlas en tu negocio, carrera o proyectos reales</li>
+          <li>Construir hábitos de aprendizaje continuo</li>
+          <li>Conectarte con una red con hambre de crecer</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    © <span id="year"></span> Aprende y Aplica IA — Todos los derechos reservados
+  </div>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+    const msg = document.getElementById('regMsg');
+    const form = document.getElementById('registerForm');
+    function getApiKey(){
+      try {
+        let k = sessionStorage.getItem('apiKey');
+        if (!k) { k = btoa(Date.now()+ '-' + Math.random().toString(36).slice(2)).replace(/[^a-zA-Z0-9]/g,''); sessionStorage.setItem('apiKey', k);} 
+        return k;
+      } catch(_) { return 'dev'; }
+    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = 'Registrando...';
+      const payload = {
+        full_name: document.getElementById('full_name').value.trim(),
+        username: document.getElementById('username').value.trim(),
+        email: document.getElementById('email').value.trim() || null,
+        password: document.getElementById('password').value || undefined
+      };
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': getApiKey(),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error('Error HTTP ' + res.status + ': ' + text.slice(0,180));
+        }
+        const data = await res.json();
+        msg.textContent = '✅ Registro exitoso. Ahora puedes iniciar sesión.';
+      } catch (err) {
+        msg.textContent = '⚠️ ' + (err.message || 'No se pudo registrar');
+      }
+    });
+  </script>
+</body>
+</html>
+
+

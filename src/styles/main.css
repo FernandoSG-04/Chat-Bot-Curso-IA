@@ -115,6 +115,112 @@ body:not(.landing) {
     justify-content: center;
     align-items: center;
 }
+/* Ajustes específicos para layout NotebookLM: ocupar toda la pantalla y acercar a bordes */
+body.layout-notebook { padding: 8px; align-items: stretch; justify-content: stretch; }
+
+/* Nuevo layout NotebookLM: 3 paneles */
+.layout-notebook .layout-3panels {
+    display: grid;
+    grid-template-columns: var(--left-col, 300px) 1fr var(--right-col, 360px);
+    gap: 12px;
+    width: 100vw;
+    max-width: none;
+    height: calc(100vh - 16px);
+    transition: grid-template-columns .35s cubic-bezier(.2,.9,.2,1);
+}
+.studio-rail { display:none; gap:8px; padding: 8px; }
+.rail-btn { width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(68,229,255,.25); background: rgba(255,255,255,.04); color: var(--text-on-dark); cursor: pointer; }
+.rail-btn i { font-size: 20px; }
+.right-collapsed .studio-rail { display:flex; flex-direction: column; align-items:center; }
+.right-collapsed .studio-cards { display:none; }
+.right-collapsed .studio-header h3 { display:none }
+.right-collapsed .studio-right { padding: 8px; }
+
+.sidebar-left {
+    background: rgba(10,10,10,0.75);
+    border: 1px solid rgba(68,229,255,0.18);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+    padding: 12px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: width .35s ease, padding .35s ease;
+}
+.sidebar-header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding: 4px 8px 10px; color: var(--text-muted); font-weight: 700; font-family: var(--font-heading); }
+.tool-list { display: grid; gap: 8px; }
+.tool-btn {
+    text-align: left;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(68,229,255,0.18);
+    border-radius: 10px;
+    color: var(--text-on-dark);
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+}
+.tool-btn i { font-size: 18px; }
+.tool-btn:hover { background: rgba(68,229,255,0.15); color: var(--color-bg-1); }
+.tool-sep { height: 1px; background: rgba(255,255,255,0.08); margin: 8px 0; }
+
+.collapse-btn { background: transparent; border: 1px solid rgba(255,255,255,0.25); color: var(--text-on-dark); border-radius: 10px; padding: 4px 8px; cursor: pointer; }
+
+/* Estado colapsado: solo iconos */
+.left-collapsed { --left-col: 64px; }
+.right-collapsed { --right-col: 64px; }
+.left-collapsed .sidebar-left { padding: 8px; }
+.right-collapsed .studio-right { padding: 8px; border-left: 1px solid rgba(68,229,255,0.15); }
+.left-collapsed .tool-btn { padding: 10px; justify-content: center; }
+.left-collapsed .tool-btn span { display: none; }
+.left-collapsed .tool-btn i { font-size: 20px; }
+.left-collapsed .sidebar-header h3 { display:none }
+.right-collapsed .studio-header h3 { display:none }
+
+.chat-main { display: flex; align-items: center; justify-content: center; }
+
+.studio-right {
+    background: rgba(10,10,10,0.75);
+    border: 1px solid rgba(68,229,255,0.18);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+    padding: 12px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    transition: width .35s ease, padding .35s ease;
+}
+.studio-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 10px; }
+.studio-tiles .tile { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid rgba(68,229,255,0.18); background: rgba(255,255,255,0.04); color: var(--text-on-dark); cursor: pointer; text-align: left; }
+.studio-tiles .tile i { font-size: 22px; }
+.studio-tiles .tile.full { grid-column: 1 / -1; }
+.studio-tiles .tile:hover { background: rgba(68,229,255,0.10); }
+.studio-header { display:flex; align-items:center; justify-content:space-between; gap:8px; padding: 4px 8px 10px; color: var(--text-muted); font-weight: 700; font-family: var(--font-heading); }
+.studio-cards { overflow: auto; display: grid; gap: 10px; padding-right: 4px; }
+.studio-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(68,229,255,0.18); border-radius: 12px; padding: 10px 12px; }
+
+@media (max-width: 1100px) {
+    .layout-notebook .layout-3panels { grid-template-columns: var(--left-col,64px) 1fr var(--right-col, 64px); }
+    .sidebar-left { padding: 8px; }
+    .sidebar-header h3 { display: none; }
+    .tool-btn { font-size: 0; padding: 10px; }
+}
+
+@media (max-width: 860px) {
+    .layout-notebook .layout-3panels { grid-template-columns: 1fr; height: auto; }
+    .sidebar-left { order: 1; }
+    .chat-main { order: 2; }
+    .studio-right { order: 3; }
+    /* En móvil, laterales colapsados por defecto con rail de iconos */
+    :root { --left-col: 64px; --right-col: 64px; }
+    .studio-rail { display:flex; flex-direction: column; align-items:center; }
+    .studio-cards { display:none; }
+}
+
+/* Ajuste del ancho del chat según colapso de paneles */
+body.left-collapsed.right-collapsed { --chat-max: 820px; }
+body.left-collapsed:not(.right-collapsed) { --chat-max: 680px; }
+body.right-collapsed:not(.left-collapsed) { --chat-max: 680px; }
+body:not(.left-collapsed):not(.right-collapsed) { --chat-max: 520px; }
 
 .navbar {
     position: sticky;
@@ -226,8 +332,8 @@ body:not(.landing) {
     backdrop-filter: blur(10px);
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(68, 229, 255, 0.06) inset;
     width: 100%;
-    max-width: 400px;
-    height: 700px;
+    max-width: var(--chat-max, 520px);
+    height: calc(100vh - 60px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -422,6 +528,7 @@ body:not(.landing) {
     box-shadow: 0 0 0 2px rgba(68, 229, 255, 0.35), 0 8px 16px rgba(0,0,0,0.35);
     animation: glowPulse 4s ease-in-out infinite;
 }
+.bot-avatar i { font-size: 22px; }
 
 .chat-info h3 {
     font-size: 20px;
@@ -517,6 +624,7 @@ body:not(.landing) {
     color: var(--color-bg-1);
     box-shadow: 0 2px 8px rgba(0,0,0,0.35);
 }
+.msg-avatar .avatar-circle i { font-size: 16px; }
 .msg-avatar.user { order: 2; }
 .user-message .message-bubble { order: 1; }
 
@@ -1092,7 +1200,7 @@ a:focus-visible,
     .nav-button:hover,
     .btn:hover,
     .alpha-btn:hover {
-        /* Mantener los estilos existentes que ya cumplen con contraste */
+        filter: brightness(1.05);
     }
 }
 
